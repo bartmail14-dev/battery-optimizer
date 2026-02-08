@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "verbatimModuleSyntax": true,
+    "paths": {
+      "@shared/types": ["../src/types/index.ts"],
+      "@shared/constants": ["../src/constants/index.ts"],
+      "@shared/constants/*": ["../src/constants/*"],
+      "@shared/calculations": ["../src/services/calculations/index.ts"],
+      "@shared/calculations/*": ["../src/services/calculations/*"]
+    },
+    "rootDir": ".."
+  },
+  "include": ["src/**/*", "../src/types/**/*", "../src/constants/**/*", "../src/services/calculations/**/*"]
+}
