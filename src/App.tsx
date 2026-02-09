@@ -143,6 +143,9 @@ function AppContent() {
                 annualConsumption={calc.annualConsumption}
                 peakDemand={calc.peakDemand}
                 connectionCapacity={calc.connectionCapacity}
+                tariffs={calc.tariffs}
+                subsidies={calc.subsidies}
+                financials={calc.financials}
                 isCalculating={calc.isCalculating}
                 hasCustomProfile={calc.customHourlyProfile !== null}
                 customHourlyProfile={calc.customHourlyProfile}

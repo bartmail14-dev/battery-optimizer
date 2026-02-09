@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Battery, Building2, Hotel, HelpCircle, Heart, Store, Landmark, Factory, Truck, GraduationCap, MoreHorizontal } from 'lucide-react';
+import { Battery, Building2, Hotel, HelpCircle, Heart, Store, Landmark, Factory, Truck, GraduationCap, MoreHorizontal, Sparkles, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { BatteryConfig, Sector } from '../../types';
 import { SECTOR_LABELS } from '../../constants/dutch-energy-market';
 import { VALIDATION } from '../../constants/validation-ranges';
 import { InfoTooltip } from '../shared';
+import type { SizingRecommendation } from '../../services/calculations/battery-sizing';
 
 const V = VALIDATION;
 const SECTOR_VALUES: Sector[] = ['hospitality', 'healthcare', 'retail', 'kantoor', 'industrie', 'logistiek', 'onderwijs', 'overig'];
@@ -39,6 +41,7 @@ interface BatteryConfiguratorProps {
     connectionCapacityKw: number;
   };
   onSubmit: (data: FormData) => void;
+  onRecommend?: (profileData: { sector: Sector; annualConsumptionKwh: number; peakDemandKw: number; connectionCapacityKw: number }) => Promise<SizingRecommendation>;
   isCalculating: boolean;
   hasCustomProfile?: boolean;
 }
@@ -54,11 +57,13 @@ const sectorIcons: Record<Sector, typeof Hotel> = {
   overig: MoreHorizontal,
 };
 
-export function BatteryConfigurator({ defaultValues, onSubmit, isCalculating, hasCustomProfile }: BatteryConfiguratorProps) {
+export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCalculating, hasCustomProfile }: BatteryConfiguratorProps) {
   const {
     register,
     handleSubmit,
+    setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(batterySchema),
@@ -66,6 +71,55 @@ export function BatteryConfigurator({ defaultValues, onSubmit, isCalculating, ha
   });
 
   const sector = watch('sector');
+  const [isRecommending, setIsRecommending] = useState(false);
+  const [recommendation, setRecommendation] = useState<SizingRecommendation | null>(null);
+  const [recommendError, setRecommendError] = useState<string | null>(null);
+
+  async function handleRecommend() {
+    if (!onRecommend) return;
+    setIsRecommending(true);
+    setRecommendError(null);
+    setRecommendation(null);
+
+    try {
+      const values = getValues();
+      const result = await onRecommend({
+        sector: values.sector,
+        annualConsumptionKwh: values.annualConsumptionKwh,
+        peakDemandKw: values.peakDemandKw,
+        connectionCapacityKw: values.connectionCapacityKw,
+      });
+
+      setRecommendation(result);
+
+      // Auto-fill battery fields with recommendation
+      const bc = result.batteryConfig;
+      setValue('capacityKwh', bc.capacityKwh);
+      setValue('powerKw', bc.powerKw);
+      setValue('costPerKwh', bc.costPerKwh);
+      setValue('installationCost', bc.installationCost);
+      setValue('annualMaintenanceCost', bc.annualMaintenanceCost);
+      setValue('lifespanYears', bc.lifespanYears);
+      setValue('roundTripEfficiency', bc.roundTripEfficiency);
+      setValue('annualDegradation', bc.annualDegradation);
+      setValue('cycleLife', bc.cycleLife);
+      setValue('depthOfDischarge', bc.depthOfDischarge);
+    } catch (err) {
+      setRecommendError(err instanceof Error ? err.message : 'Aanbeveling mislukt');
+    } finally {
+      setIsRecommending(false);
+    }
+  }
+
+  function applyAlternative(candidate: { capacityKwh: number; powerKw: number }) {
+    if (!recommendation) return;
+    // Recalculate costs for this alternative size
+    const perKwh = 60 - Math.min(30, candidate.capacityKwh / 20);
+    setValue('capacityKwh', candidate.capacityKwh);
+    setValue('powerKw', candidate.powerKw);
+    setValue('installationCost', Math.round(5000 + candidate.capacityKwh * perKwh));
+    setValue('annualMaintenanceCost', Math.round(500 + candidate.capacityKwh * 8));
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -141,6 +195,96 @@ export function BatteryConfigurator({ defaultValues, onSubmit, isCalculating, ha
           Batterijconfiguratie
         </legend>
 
+        {/* Recommend Button */}
+        {onRecommend && (
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleRecommend}
+              disabled={isRecommending}
+              className={clsx(
+                'flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-3 text-sm font-semibold transition',
+                isRecommending
+                  ? 'cursor-wait border-gray-300 bg-gray-50 text-gray-400'
+                  : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100'
+              )}
+            >
+              {isRecommending ? (
+                <>
+                  <Zap className="h-4 w-4 animate-pulse" />
+                  Optimale batterij wordt berekend...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Bereken optimale batterijgrootte
+                </>
+              )}
+            </button>
+
+            {recommendError && (
+              <p className="text-sm text-red-600">{recommendError}</p>
+            )}
+
+            {recommendation && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <p className="text-sm text-emerald-800">{recommendation.rationale}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-emerald-700">{recommendation.recommended.capacityKwh} kWh</div>
+                    <div className="text-xs text-emerald-600">Capaciteit</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-emerald-700">{recommendation.recommended.powerKw} kW</div>
+                    <div className="text-xs text-emerald-600">Vermogen</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-emerald-700">
+                      {recommendation.recommended.npv > 0 ? '+' : ''}{Math.round(recommendation.recommended.npv).toLocaleString('nl-NL')}
+                    </div>
+                    <div className="text-xs text-emerald-600">NPV (EUR)</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-emerald-700">
+                      {recommendation.recommended.simplePayback != null
+                        ? `${recommendation.recommended.simplePayback.toFixed(1)} jr`
+                        : '> horizon'}
+                    </div>
+                    <div className="text-xs text-emerald-600">Terugverdientijd</div>
+                  </div>
+                </div>
+
+                {(recommendation.conservative || recommendation.aggressive) && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {recommendation.conservative && (
+                      <button
+                        type="button"
+                        onClick={() => applyAlternative(recommendation.conservative!)}
+                        className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition"
+                      >
+                        Conservatief: {recommendation.conservative.capacityKwh} kWh
+                      </button>
+                    )}
+                    {recommendation.aggressive && (
+                      <button
+                        type="button"
+                        onClick={() => applyAlternative(recommendation.aggressive!)}
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 transition"
+                      >
+                        Ambitieus: {recommendation.aggressive.capacityKwh} kWh
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-3">
           <InputField
             label="Capaciteit"
@@ -159,7 +303,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, isCalculating, ha
           <InputField
             label="Kosten per kWh"
             unit="EUR/kWh"
-            tooltip="Aanschafprijs per kWh opslagcapaciteit. Marktgemiddelde 2024: € 400-700/kWh."
+            tooltip="Aanschafprijs per kWh opslagcapaciteit. Marktgemiddelde 2024: EUR 400-700/kWh."
             error={errors.costPerKwh?.message}
             {...register('costPerKwh', { valueAsNumber: true })}
           />

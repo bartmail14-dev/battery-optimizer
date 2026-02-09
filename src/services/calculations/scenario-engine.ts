@@ -30,7 +30,7 @@ import { aggregateRegimeBreakdown } from './regime-analyzer';
 /**
  * Runs a full analysis for a single parameter set and returns all financial metrics.
  */
-function runSingleAnalysis(
+export function runSingleAnalysis(
   battery: BatteryConfig,
   profile: EnergyProfile,
   tariffs: TariffStructure,

@@ -8,7 +8,9 @@ export {
   generateCashflows,
   generateYearlyRevenueBreakdown,
 } from './financial-model';
-export { generateScenarios, calculateFullResult, sensitivityAnalysis } from './scenario-engine';
+export { runSingleAnalysis, generateScenarios, calculateFullResult, sensitivityAnalysis } from './scenario-engine';
+export { recommendBatterySize } from './battery-sizing';
+export type { SizingRecommendation, SizingCandidate } from './battery-sizing';
 export { calculateSDE, calculateEIA, calculateTotalSubsidyPerYear, getEffectiveInvestment, generateSubsidySchedule } from './subsidy-calculator';
 export { aggregateRegimeBreakdown } from './regime-analyzer';
 export { generateHourlyProfile } from './profile-generator';

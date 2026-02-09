@@ -7,6 +7,7 @@ import type {
   CalculationResult,
   SensitivityDataPoint,
 } from '../../types';
+import type { SizingRecommendation } from '../calculations/battery-sizing';
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
@@ -76,6 +77,20 @@ export async function sensitivityViaAPI(
 ): Promise<SensitivityDataPoint[]> {
   return apiRequest<SensitivityDataPoint[]>('/sensitivity', {
     battery,
+    profile: buildProfilePayload(profile),
+    tariffs,
+    subsidies,
+    financials,
+  });
+}
+
+export async function recommendViaAPI(
+  profile: EnergyProfile,
+  tariffs: TariffStructure,
+  subsidies: SubsidyConfig,
+  financials: FinancialParams
+): Promise<SizingRecommendation> {
+  return apiRequest<SizingRecommendation>('/recommend', {
     profile: buildProfilePayload(profile),
     tariffs,
     subsidies,

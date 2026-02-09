@@ -62,3 +62,10 @@ export const CalculateRequestSchema = z.object({
 });
 
 export type CalculateRequest = z.infer<typeof CalculateRequestSchema>;
+
+export const SizingRequestSchema = z.object({
+  profile: EnergyProfileSchema,
+  tariffs: TariffStructureSchema,
+  subsidies: SubsidyConfigSchema,
+  financials: FinancialParamsSchema,
+});

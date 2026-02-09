@@ -2,8 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { BatteryConfigurator } from '../components/calculator';
 import { KwartierDataUpload } from '../components/calculator/KwartierDataUpload';
 import { DataExtractor } from '../components/ai-advisor';
-import type { BatteryConfig, EnergyProfile, Sector } from '../types';
+import type { BatteryConfig, EnergyProfile, Sector, TariffStructure, SubsidyConfig, FinancialParams } from '../types';
 import { generateHourlyProfile } from '../services/calculations/profile-generator';
+import { recommendViaAPI } from '../services/api/api-client';
+import type { SizingRecommendation } from '../services/calculations/battery-sizing';
 
 interface CalculateOverrides {
   batteryConfig?: BatteryConfig;
@@ -16,6 +18,9 @@ interface InputPageProps {
   annualConsumption: number;
   peakDemand: number;
   connectionCapacity: number;
+  tariffs: TariffStructure;
+  subsidies: SubsidyConfig;
+  financials: FinancialParams;
   isCalculating: boolean;
   hasCustomProfile: boolean;
   customHourlyProfile: number[] | null;
@@ -34,6 +39,9 @@ export function InputPage({
   annualConsumption,
   peakDemand,
   connectionCapacity,
+  tariffs,
+  subsidies,
+  financials,
   isCalculating,
   hasCustomProfile,
   customHourlyProfile,
@@ -110,6 +118,23 @@ export function InputPage({
     if (data.connectionCapacityKw) setConnectionCapacity(data.connectionCapacityKw);
   }
 
+  async function handleRecommend(profileData: {
+    sector: Sector;
+    annualConsumptionKwh: number;
+    peakDemandKw: number;
+    connectionCapacityKw: number;
+  }): Promise<SizingRecommendation> {
+    const profile: EnergyProfile = {
+      hourlyConsumptionKwh: customHourlyProfile ?? generateHourlyProfile(profileData.annualConsumptionKwh, profileData.peakDemandKw, profileData.sector),
+      peakDemandKw: profileData.peakDemandKw,
+      annualConsumptionKwh: profileData.annualConsumptionKwh,
+      connectionCapacityKw: profileData.connectionCapacityKw,
+      sector: profileData.sector,
+      dataSource: customHourlyProfile ? 'csv' : 'synthetic',
+    };
+    return recommendViaAPI(profile, tariffs, subsidies, financials);
+  }
+
   function handleCsvAccepted(data: {
     hourlyConsumptionKwh: number[];
     annualConsumptionKwh: number;
@@ -146,6 +171,7 @@ export function InputPage({
           connectionCapacityKw: connectionCapacity,
         }}
         onSubmit={handleSubmit}
+        onRecommend={handleRecommend}
         isCalculating={isCalculating}
         hasCustomProfile={hasCustomProfile}
       />
