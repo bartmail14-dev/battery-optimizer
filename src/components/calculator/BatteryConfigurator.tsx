@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { Battery, Building2, Hotel, HelpCircle, Heart, Store, Landmark, Factory, Truck, GraduationCap, MoreHorizontal } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { BatteryConfig, Sector } from '../../types';
-import { PRESETS } from '../../constants/presets';
 import { SECTOR_LABELS } from '../../constants/dutch-energy-market';
 import { VALIDATION } from '../../constants/validation-ranges';
 import { InfoTooltip } from '../shared';
@@ -59,7 +58,6 @@ export function BatteryConfigurator({ defaultValues, onSubmit, isCalculating, ha
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     formState: { errors },
   } = useForm<FormData>({
@@ -69,55 +67,8 @@ export function BatteryConfigurator({ defaultValues, onSubmit, isCalculating, ha
 
   const sector = watch('sector');
 
-  function applyPreset(presetIndex: number) {
-    const preset = PRESETS[presetIndex];
-    if (!preset) return;
-
-    const bc = preset.batteryConfig;
-    const ep = preset.energyProfile;
-
-    if (bc.capacityKwh !== undefined) setValue('capacityKwh', bc.capacityKwh);
-    if (bc.powerKw !== undefined) setValue('powerKw', bc.powerKw);
-    if (bc.costPerKwh !== undefined) setValue('costPerKwh', bc.costPerKwh);
-    if (bc.installationCost !== undefined) setValue('installationCost', bc.installationCost);
-    if (bc.annualMaintenanceCost !== undefined) setValue('annualMaintenanceCost', bc.annualMaintenanceCost);
-    if (bc.lifespanYears !== undefined) setValue('lifespanYears', bc.lifespanYears);
-    if (bc.roundTripEfficiency !== undefined) setValue('roundTripEfficiency', bc.roundTripEfficiency);
-    if (bc.annualDegradation !== undefined) setValue('annualDegradation', bc.annualDegradation);
-    if (bc.cycleLife !== undefined) setValue('cycleLife', bc.cycleLife);
-    if (bc.depthOfDischarge !== undefined) setValue('depthOfDischarge', bc.depthOfDischarge);
-    if (ep.annualConsumptionKwh !== undefined) setValue('annualConsumptionKwh', ep.annualConsumptionKwh);
-    if (ep.peakDemandKw !== undefined) setValue('peakDemandKw', ep.peakDemandKw);
-    if (ep.connectionCapacityKw !== undefined) setValue('connectionCapacityKw', ep.connectionCapacityKw);
-    setValue('sector', preset.sector);
-  }
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      {/* Preset Selection */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">
-          Kies een profiel of vul handmatig in
-        </h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {PRESETS.map((preset, i) => {
-            const Icon = sectorIcons[preset.sector];
-            return (
-              <button
-                key={preset.name}
-                type="button"
-                className="flex flex-col items-center gap-2 rounded-xl border-2 border-gray-200 p-4 text-sm transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onClick={() => applyPreset(i)}
-              >
-                <Icon className="h-6 w-6 text-blue-600" />
-                <span className="font-medium">{preset.name}</span>
-                <span className="text-xs text-gray-500">{preset.description}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Sector */}
       <fieldset>
         <legend className="text-base font-semibold text-gray-800 mb-2">Sector</legend>
