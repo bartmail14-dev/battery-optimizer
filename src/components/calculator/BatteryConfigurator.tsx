@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -80,6 +80,15 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
     resolver: zodResolver(batterySchema),
     defaultValues: formDefaults as FormData,
   });
+
+  // Sync form when external data arrives (CSV upload, AI extraction, project load)
+  useEffect(() => {
+    if (defaultValues.annualConsumptionKwh) setValue('annualConsumptionKwh', defaultValues.annualConsumptionKwh);
+    if (defaultValues.peakDemandKw) setValue('peakDemandKw', defaultValues.peakDemandKw);
+    if (defaultValues.connectionCapacityKw) setValue('connectionCapacityKw', defaultValues.connectionCapacityKw);
+    if (defaultValues.capacityKwh) setValue('capacityKwh', defaultValues.capacityKwh);
+    if (defaultValues.powerKw) setValue('powerKw', defaultValues.powerKw);
+  }, [defaultValues.annualConsumptionKwh, defaultValues.peakDemandKw, defaultValues.connectionCapacityKw, defaultValues.capacityKwh, defaultValues.powerKw, setValue]);
 
   const sector = watch('sector');
   const [isRecommending, setIsRecommending] = useState(false);
