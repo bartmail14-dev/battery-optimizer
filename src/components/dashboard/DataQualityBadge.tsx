@@ -24,7 +24,7 @@ export function DataQualityBadge({ dataSource }: DataQualityBadgeProps) {
         </svg>
       </div>
       <span>
-        Analyse op basis van <strong>synthetisch profiel</strong> — upload uw kwartierdata voor een nauwkeuriger resultaat
+        Analyse op basis van <strong>synthetisch profiel</strong> (NEDU-sectorprofiel met seizoenscorrectie). Dit is een indicatieve schatting — upload uw werkelijke kwartierdata voor nauwkeurige resultaten
       </span>
     </div>
   );

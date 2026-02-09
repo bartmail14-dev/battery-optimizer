@@ -11,6 +11,8 @@ import type {
   PaybackConfidence,
 } from '../../types';
 import { SCENARIO_MULTIPLIERS, CO2_EMISSION_FACTORS, PEAK_HOURS } from '../../constants';
+import { SENSITIVITY_RANGES } from '../../constants/sensitivity-ranges';
+import { KPI_THRESHOLDS } from '../../constants/kpi-thresholds';
 import { simulateBatteryOperation, getMonthlyBreakdown } from './battery-simulation';
 import {
   calculateNPV,
@@ -290,9 +292,9 @@ export function calculateFullResult(
   const rawRange = pessimisticScenario.simplePayback - optimisticScenario.simplePayback;
   const rangeYears = isFinite(rawRange) ? rawRange : Infinity;
   let confidence: 'hoog' | 'midden' | 'laag';
-  if (rangeYears <= 2) {
+  if (rangeYears <= KPI_THRESHOLDS.paybackConfidence.high) {
     confidence = 'hoog';
-  } else if (rangeYears <= 5) {
+  } else if (rangeYears <= KPI_THRESHOLDS.paybackConfidence.medium) {
     confidence = 'midden';
   } else {
     confidence = 'laag';
@@ -367,16 +369,16 @@ export function sensitivityAnalysis(
       label: 'Energieprijs',
       unit: 'EUR/kWh',
       getBase: () => tariffs.peakRate,
-      lowMultiplier: 0.7,
-      highMultiplier: 1.5,
+      lowMultiplier: SENSITIVITY_RANGES.electricityPrice.low,
+      highMultiplier: SENSITIVITY_RANGES.electricityPrice.high,
       applyLow: () => ({
         battery,
-        tariffs: { ...tariffs, peakRate: tariffs.peakRate * 0.7, offPeakRate: tariffs.offPeakRate * 0.7 },
+        tariffs: { ...tariffs, peakRate: tariffs.peakRate * SENSITIVITY_RANGES.electricityPrice.low, offPeakRate: tariffs.offPeakRate * SENSITIVITY_RANGES.electricityPrice.low },
         financials,
       }),
       applyHigh: () => ({
         battery,
-        tariffs: { ...tariffs, peakRate: tariffs.peakRate * 1.5, offPeakRate: tariffs.offPeakRate * 1.5 },
+        tariffs: { ...tariffs, peakRate: tariffs.peakRate * SENSITIVITY_RANGES.electricityPrice.high, offPeakRate: tariffs.offPeakRate * SENSITIVITY_RANGES.electricityPrice.high },
         financials,
       }),
     },
@@ -385,15 +387,15 @@ export function sensitivityAnalysis(
       label: 'Batterijkosten',
       unit: 'EUR/kWh',
       getBase: () => battery.costPerKwh,
-      lowMultiplier: 0.75,
-      highMultiplier: 1.25,
+      lowMultiplier: SENSITIVITY_RANGES.batteryCost.low,
+      highMultiplier: SENSITIVITY_RANGES.batteryCost.high,
       applyLow: () => ({
-        battery: { ...battery, costPerKwh: battery.costPerKwh * 0.75 },
+        battery: { ...battery, costPerKwh: battery.costPerKwh * SENSITIVITY_RANGES.batteryCost.low },
         tariffs,
         financials,
       }),
       applyHigh: () => ({
-        battery: { ...battery, costPerKwh: battery.costPerKwh * 1.25 },
+        battery: { ...battery, costPerKwh: battery.costPerKwh * SENSITIVITY_RANGES.batteryCost.high },
         tariffs,
         financials,
       }),
@@ -403,17 +405,17 @@ export function sensitivityAnalysis(
       label: 'Discontovoet (WACC)',
       unit: '%',
       getBase: () => financials.discountRate * 100,
-      lowMultiplier: 0.5,
-      highMultiplier: 1.5,
+      lowMultiplier: SENSITIVITY_RANGES.discountRate.low,
+      highMultiplier: SENSITIVITY_RANGES.discountRate.high,
       applyLow: () => ({
         battery,
         tariffs,
-        financials: { ...financials, discountRate: financials.discountRate * 0.5 },
+        financials: { ...financials, discountRate: financials.discountRate * SENSITIVITY_RANGES.discountRate.low },
       }),
       applyHigh: () => ({
         battery,
         tariffs,
-        financials: { ...financials, discountRate: financials.discountRate * 1.5 },
+        financials: { ...financials, discountRate: financials.discountRate * SENSITIVITY_RANGES.discountRate.high },
       }),
     },
     {
@@ -421,15 +423,15 @@ export function sensitivityAnalysis(
       label: 'Degradatie',
       unit: '%/jaar',
       getBase: () => battery.annualDegradation * 100,
-      lowMultiplier: 0.5,
-      highMultiplier: 2.0,
+      lowMultiplier: SENSITIVITY_RANGES.degradation.low,
+      highMultiplier: SENSITIVITY_RANGES.degradation.high,
       applyLow: () => ({
-        battery: { ...battery, annualDegradation: battery.annualDegradation * 0.5 },
+        battery: { ...battery, annualDegradation: battery.annualDegradation * SENSITIVITY_RANGES.degradation.low },
         tariffs,
         financials,
       }),
       applyHigh: () => ({
-        battery: { ...battery, annualDegradation: battery.annualDegradation * 2.0 },
+        battery: { ...battery, annualDegradation: battery.annualDegradation * SENSITIVITY_RANGES.degradation.high },
         tariffs,
         financials,
       }),
@@ -439,17 +441,17 @@ export function sensitivityAnalysis(
       label: 'Energieprijsstijging',
       unit: '%/jaar',
       getBase: () => financials.electricityPriceGrowthRate * 100,
-      lowMultiplier: 0.33,
-      highMultiplier: 2.0,
+      lowMultiplier: SENSITIVITY_RANGES.priceGrowth.low,
+      highMultiplier: SENSITIVITY_RANGES.priceGrowth.high,
       applyLow: () => ({
         battery,
         tariffs,
-        financials: { ...financials, electricityPriceGrowthRate: financials.electricityPriceGrowthRate * 0.33 },
+        financials: { ...financials, electricityPriceGrowthRate: financials.electricityPriceGrowthRate * SENSITIVITY_RANGES.priceGrowth.low },
       }),
       applyHigh: () => ({
         battery,
         tariffs,
-        financials: { ...financials, electricityPriceGrowthRate: financials.electricityPriceGrowthRate * 2.0 },
+        financials: { ...financials, electricityPriceGrowthRate: financials.electricityPriceGrowthRate * SENSITIVITY_RANGES.priceGrowth.high },
       }),
     },
   ];

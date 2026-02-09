@@ -3,6 +3,7 @@ import { MetricCard } from '../shared';
 import { InfoTooltip } from '../shared';
 import { formatPercentage } from '../../utils/format';
 import { PEAK_HOURS } from '../../constants';
+import { KPI_THRESHOLDS } from '../../constants/kpi-thresholds';
 
 interface GridIndependenceMetricsProps {
   hourlyResults: HourlySimulationResult[];
@@ -42,14 +43,14 @@ export function GridIndependenceMetrics({ hourlyResults, annualConsumptionKwh }:
         <MetricCard
           label="Zelfconsumptie"
           value={formatPercentage(selfConsumption)}
-          status={selfConsumption >= 0.15 ? 'positive' : selfConsumption >= 0.05 ? 'neutral' : 'negative'}
+          status={selfConsumption >= KPI_THRESHOLDS.gridIndependence.positive ? 'positive' : selfConsumption >= KPI_THRESHOLDS.gridIndependence.neutral ? 'neutral' : 'negative'}
           explanation="Aandeel van het totale verbruik geleverd door de batterij"
         />
 
         <MetricCard
           label="Piekuur-dekking"
           value={formatPercentage(peakCoverage)}
-          status={peakCoverage >= 0.20 ? 'positive' : peakCoverage >= 0.10 ? 'neutral' : 'negative'}
+          status={peakCoverage >= KPI_THRESHOLDS.peakHourCoverage.positive ? 'positive' : peakCoverage >= KPI_THRESHOLDS.peakHourCoverage.neutral ? 'neutral' : 'negative'}
           explanation="Aandeel van het piekuurverbruik (07:00-23:00) geleverd door de batterij"
         />
       </div>

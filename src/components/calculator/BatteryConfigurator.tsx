@@ -6,26 +6,28 @@ import { clsx } from 'clsx';
 import type { BatteryConfig, Sector } from '../../types';
 import { PRESETS } from '../../constants/presets';
 import { SECTOR_LABELS } from '../../constants/dutch-energy-market';
+import { VALIDATION } from '../../constants/validation-ranges';
 import { InfoTooltip } from '../shared';
 
+const V = VALIDATION;
 const SECTOR_VALUES: Sector[] = ['hospitality', 'healthcare', 'retail', 'kantoor', 'industrie', 'logistiek', 'onderwijs', 'overig'];
 
 const batterySchema = z.object({
-  capacityKwh: z.number().min(10, 'Minimaal 10 kWh').max(10000, 'Maximaal 10.000 kWh'),
-  powerKw: z.number().min(5, 'Minimaal 5 kW').max(5000, 'Maximaal 5.000 kW'),
-  roundTripEfficiency: z.number().min(0.7, 'Min 70%').max(0.99, 'Max 99%'),
-  annualDegradation: z.number().min(0.005, 'Min 0,5%').max(0.1, 'Max 10%'),
-  cycleLife: z.number().min(1000).max(20000),
-  depthOfDischarge: z.number().min(0.5).max(1.0),
-  costPerKwh: z.number().min(100, 'Min € 100/kWh').max(2000, 'Max € 2.000/kWh'),
-  installationCost: z.number().min(0).max(500000),
-  annualMaintenanceCost: z.number().min(0).max(100000),
-  lifespanYears: z.number().min(5).max(30),
+  capacityKwh: z.number().min(V.battery.capacityKwh.min, `Minimaal ${V.battery.capacityKwh.min} kWh`).max(V.battery.capacityKwh.max, `Maximaal ${V.battery.capacityKwh.max.toLocaleString('nl-NL')} kWh`),
+  powerKw: z.number().min(V.battery.powerKw.min, `Minimaal ${V.battery.powerKw.min} kW`).max(V.battery.powerKw.max, `Maximaal ${V.battery.powerKw.max.toLocaleString('nl-NL')} kW`),
+  roundTripEfficiency: z.number().min(V.battery.roundTripEfficiency.min, `Min ${V.battery.roundTripEfficiency.min * 100}%`).max(V.battery.roundTripEfficiency.max, `Max ${V.battery.roundTripEfficiency.max * 100}%`),
+  annualDegradation: z.number().min(V.battery.annualDegradation.min, `Min ${V.battery.annualDegradation.min * 100}%`).max(V.battery.annualDegradation.max, `Max ${V.battery.annualDegradation.max * 100}%`),
+  cycleLife: z.number().min(V.battery.cycleLife.min).max(V.battery.cycleLife.max),
+  depthOfDischarge: z.number().min(V.battery.depthOfDischarge.min).max(V.battery.depthOfDischarge.max),
+  costPerKwh: z.number().min(V.battery.costPerKwh.min, `Min \u20AC ${V.battery.costPerKwh.min}/kWh`).max(V.battery.costPerKwh.max, `Max \u20AC ${V.battery.costPerKwh.max.toLocaleString('nl-NL')}/kWh`),
+  installationCost: z.number().min(V.battery.installationCost.min).max(V.battery.installationCost.max),
+  annualMaintenanceCost: z.number().min(V.battery.annualMaintenanceCost.min).max(V.battery.annualMaintenanceCost.max),
+  lifespanYears: z.number().min(V.battery.lifespanYears.min).max(V.battery.lifespanYears.max),
   // Energy profile fields
   sector: z.enum(['hospitality', 'healthcare', 'retail', 'kantoor', 'industrie', 'logistiek', 'onderwijs', 'overig']),
-  annualConsumptionKwh: z.number().min(10000, 'Min 10.000 kWh').max(50000000, 'Max 50.000.000 kWh'),
-  peakDemandKw: z.number().min(10).max(10000),
-  connectionCapacityKw: z.number().min(10).max(10000),
+  annualConsumptionKwh: z.number().min(V.profile.annualConsumptionKwh.min, `Min ${V.profile.annualConsumptionKwh.min.toLocaleString('nl-NL')} kWh`).max(V.profile.annualConsumptionKwh.max, `Max ${V.profile.annualConsumptionKwh.max.toLocaleString('nl-NL')} kWh`),
+  peakDemandKw: z.number().min(V.profile.peakDemandKw.min).max(V.profile.peakDemandKw.max),
+  connectionCapacityKw: z.number().min(V.profile.connectionCapacityKw.min).max(V.profile.connectionCapacityKw.max),
 });
 
 type FormData = z.infer<typeof batterySchema>;

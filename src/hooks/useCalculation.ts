@@ -15,51 +15,12 @@ import { calculateViaAPI, sensitivityViaAPI } from '../services/api/api-client';
 import { generateHourlyProfile } from '../services/calculations/profile-generator';
 import type { FullProject } from '../services/api/projects-client';
 import {
-  DEFAULT_DISCOUNT_RATE,
-  DEFAULT_INFLATION_RATE,
-  DEFAULT_ELECTRICITY_PRICE_GROWTH,
-  DEFAULT_ANALYSIS_YEARS,
-  EPEX_TYPICAL_PROFILE,
+  DEFAULT_BATTERY,
+  DEFAULT_TARIFFS,
+  DEFAULT_SUBSIDIES,
+  DEFAULT_FINANCIALS,
+  DEFAULT_PROFILE,
 } from '../constants';
-
-const DEFAULT_BATTERY: BatteryConfig = {
-  capacityKwh: 100,
-  powerKw: 50,
-  roundTripEfficiency: 0.89,
-  annualDegradation: 0.025,
-  cycleLife: 6000,
-  depthOfDischarge: 0.9,
-  costPerKwh: 550,
-  installationCost: 15000,
-  annualMaintenanceCost: 2000,
-  lifespanYears: 15,
-};
-
-const DEFAULT_TARIFFS: TariffStructure = {
-  commodityRatePerKwh: 0.12,
-  peakRate: 0.22,
-  offPeakRate: 0.14,
-  networkTariffPerKw: 27.5,
-  energyTaxPerKwh: 0.01312,
-  odeSurchargePerKwh: 0.00642,
-  feedInTariffPerKwh: 0.07,
-  pricingMode: 'dynamic',
-  hourlyPrices: EPEX_TYPICAL_PROFILE,
-};
-
-const DEFAULT_SUBSIDIES: SubsidyConfig = {
-  sdeEligible: true,
-  sdeBaseAmount: 0.068,
-  eiaPercentage: 0.455,
-  eiaMaxDeduction: 136000000,
-};
-
-const DEFAULT_FINANCIALS: FinancialParams = {
-  discountRate: DEFAULT_DISCOUNT_RATE,
-  inflationRate: DEFAULT_INFLATION_RATE,
-  electricityPriceGrowthRate: DEFAULT_ELECTRICITY_PRICE_GROWTH,
-  years: DEFAULT_ANALYSIS_YEARS,
-};
 
 export { generateHourlyProfile } from '../services/calculations/profile-generator';
 
@@ -69,9 +30,9 @@ export function useCalculation() {
   const [subsidies, setSubsidies] = useState<SubsidyConfig>(DEFAULT_SUBSIDIES);
   const [financials, setFinancials] = useState<FinancialParams>(DEFAULT_FINANCIALS);
   const [sector, setSector] = useState<Sector>('hospitality');
-  const [annualConsumption, setAnnualConsumption] = useState(200000);
-  const [peakDemand, setPeakDemand] = useState(80);
-  const [connectionCapacity, setConnectionCapacity] = useState(100);
+  const [annualConsumption, setAnnualConsumption] = useState(DEFAULT_PROFILE.annualConsumptionKwh);
+  const [peakDemand, setPeakDemand] = useState(DEFAULT_PROFILE.peakDemandKw);
+  const [connectionCapacity, setConnectionCapacity] = useState(DEFAULT_PROFILE.connectionCapacityKw);
   const [selectedScenario, setSelectedScenario] = useState<Scenario>('base');
   const [results, setResults] = useState<CalculationResult | null>(null);
   const [sensitivity, setSensitivity] = useState<SensitivityDataPoint[] | null>(null);

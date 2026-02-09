@@ -7,7 +7,16 @@ import type {
 } from '../../types';
 import { InfoTooltip } from '../shared';
 import { formatEuro, formatNumber, formatPercentage } from '../../utils/format';
-import { SECTOR_LABELS } from '../../constants';
+import {
+  SECTOR_LABELS,
+  CO2_EMISSION_FACTORS,
+  PEAK_HOURS,
+  CORPORATE_TAX_RATE,
+  SDE_MIN_FULL_LOAD_HOURS,
+  SDE_DURATION_YEARS,
+  SCENARIO_MULTIPLIERS,
+} from '../../constants';
+import { SENSITIVITY_RANGES } from '../../constants/sensitivity-ranges';
 
 interface AssumptionsSummaryProps {
   battery: BatteryConfig;
@@ -20,6 +29,7 @@ interface AssumptionsSummaryProps {
 interface Row {
   label: string;
   value: string;
+  source?: string;
 }
 
 function Section({ title, rows }: { title: string; rows: Row[] }) {
@@ -31,13 +41,23 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
           {rows.map((r) => (
             <tr key={r.label} className="border-b border-gray-100">
               <td className="py-1.5 pr-4 text-gray-500">{r.label}</td>
-              <td className="py-1.5 text-right font-medium text-gray-800">{r.value}</td>
+              <td className="py-1.5 text-right">
+                <span className="font-medium text-gray-800">{r.value}</span>
+                {r.source && (
+                  <span className="block text-xs text-gray-400">{r.source}</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+function fmtMultiplier(base: number, mult: number): string {
+  const pct = Math.round((mult - 1) * 100);
+  return pct >= 0 ? `+${pct}%` : `${pct}%`;
 }
 
 export function AssumptionsSummary({
@@ -92,6 +112,30 @@ export function AssumptionsSummary({
     { label: 'Analyseperiode', value: `${financials.years} jaar` },
   ];
 
+  const hiddenAssumptionRows: Row[] = [
+    { label: 'CO\u2082 emissiefactor piekuren', value: `${CO2_EMISSION_FACTORS.peakHourMarginal} kg/kWh`, source: 'Marginale emissie gascentrale — CBS/IPCC 2023' },
+    { label: 'CO\u2082 emissiefactor daluren', value: `${CO2_EMISSION_FACTORS.offPeakMarginal} kg/kWh`, source: 'CBS/IPCC 2023' },
+    { label: 'Piekuren definitie', value: `${String(PEAK_HOURS.start).padStart(2, '0')}:00\u2013${String(PEAK_HOURS.end).padStart(2, '0')}:00`, source: 'EPEX marktconventie' },
+    { label: 'Vpb-tarief (EIA)', value: formatPercentage(CORPORATE_TAX_RATE), source: 'Belastingdienst 2024' },
+    { label: 'SDE++ minimaal vollasturen', value: `${SDE_MIN_FULL_LOAD_HOURS} uur/jaar`, source: 'RVO' },
+    { label: 'SDE++ looptijd', value: `${SDE_DURATION_YEARS} jaar`, source: 'RVO' },
+  ];
+
+  const opt = SCENARIO_MULTIPLIERS.optimistic;
+  const pes = SCENARIO_MULTIPLIERS.pessimistic;
+  const SR = SENSITIVITY_RANGES;
+
+  const scenarioRows: Row[] = [
+    { label: 'Scenario: energieprijsgroei', value: `${fmtMultiplier(1, pes.electricityPriceGrowth)} / ${fmtMultiplier(1, opt.electricityPriceGrowth)}`, source: 'Pessimistisch / Optimistisch' },
+    { label: 'Scenario: batterijkosten', value: `${fmtMultiplier(1, pes.batteryCost)} / ${fmtMultiplier(1, opt.batteryCost)}`, source: 'Pessimistisch / Optimistisch' },
+    { label: 'Scenario: WACC', value: `${fmtMultiplier(1, pes.discountRate)} / ${fmtMultiplier(1, opt.discountRate)}`, source: 'Pessimistisch / Optimistisch' },
+    { label: 'Sensitivity: energieprijs', value: `\u00D7${SR.electricityPrice.low} / \u00D7${SR.electricityPrice.high}`, source: 'Range voor tornadochart' },
+    { label: 'Sensitivity: batterijkosten', value: `\u00D7${SR.batteryCost.low} / \u00D7${SR.batteryCost.high}`, source: 'Range voor tornadochart' },
+    { label: 'Sensitivity: WACC', value: `\u00D7${SR.discountRate.low} / \u00D7${SR.discountRate.high}`, source: 'Range voor tornadochart' },
+    { label: 'Sensitivity: degradatie', value: `\u00D7${SR.degradation.low} / \u00D7${SR.degradation.high}`, source: 'Range voor tornadochart' },
+    { label: 'Sensitivity: prijsgroei', value: `\u00D7${SR.priceGrowth.low} / \u00D7${SR.priceGrowth.high}`, source: 'Range voor tornadochart' },
+  ];
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center gap-2">
@@ -105,7 +149,13 @@ export function AssumptionsSummary({
         <Section title="Tarieven" rows={tariffRows} />
         <Section title="Subsidie" rows={subsidyRows} />
         <Section title="Financieel" rows={financialRows} />
+        <Section title="Berekende aannames" rows={hiddenAssumptionRows} />
+        <Section title="Scenario & gevoeligheid" rows={scenarioRows} />
       </div>
+
+      <p className="mt-4 text-xs text-gray-400">
+        Alle waarden zijn configureerbaar. Bronnen: Belastingdienst, RVO, CBS/IPCC, EPEX SPOT, COMCAM marktanalyse 2024.
+      </p>
     </div>
   );
 }

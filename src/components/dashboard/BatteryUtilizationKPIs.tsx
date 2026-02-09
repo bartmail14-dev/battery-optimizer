@@ -3,21 +3,25 @@ import { MetricCard } from '../shared';
 import type { MetricStatus } from '../shared';
 import { InfoTooltip } from '../shared';
 import { formatNumber, formatPercentage } from '../../utils/format';
+import { KPI_THRESHOLDS } from '../../constants/kpi-thresholds';
 
 interface BatteryUtilizationKPIsProps {
   simulation: AnnualSimulationResult;
   battery: BatteryConfig;
 }
 
+const UT = KPI_THRESHOLDS.utilization;
+const CY = KPI_THRESHOLDS.cyclesPerDay;
+
 function getUtilizationStatus(pct: number): MetricStatus {
-  if (pct >= 60 && pct <= 90) return 'positive';
-  if (pct >= 30 && pct <= 60) return 'neutral';
+  if (pct >= UT.optimal.min && pct <= UT.optimal.max) return 'positive';
+  if (pct >= UT.acceptable.min && pct <= UT.acceptable.max) return 'neutral';
   return 'negative';
 }
 
 export function BatteryUtilizationKPIs({ simulation, battery }: BatteryUtilizationKPIsProps) {
   const usableCapacity = battery.capacityKwh * battery.depthOfDischarge;
-  const maxDailyThroughput = Math.min(usableCapacity, battery.powerKw * 12);
+  const maxDailyThroughput = Math.min(usableCapacity, battery.powerKw * KPI_THRESHOLDS.maxDailyOperationalHours);
   const maxAnnualThroughput = maxDailyThroughput * 365;
   const utilization = maxAnnualThroughput > 0
     ? (simulation.totalDischarged / maxAnnualThroughput) * 100
@@ -55,9 +59,9 @@ export function BatteryUtilizationKPIs({ simulation, battery }: BatteryUtilizati
           unit="%"
           status={getUtilizationStatus(utilization)}
           explanation={
-            utilization < 30
+            utilization < UT.acceptable.min
               ? 'Batterij is oversized voor dit profiel'
-              : utilization > 90
+              : utilization > UT.acceptable.max
                 ? 'Batterij is zwaar belast — overweeg grotere capaciteit'
                 : 'Goede benutting van de batterijcapaciteit'
           }
@@ -66,7 +70,7 @@ export function BatteryUtilizationKPIs({ simulation, battery }: BatteryUtilizati
         <MetricCard
           label="Gemiddelde cycli/dag"
           value={formatNumber(avgCyclesPerDay, 2)}
-          status={avgCyclesPerDay >= 0.5 && avgCyclesPerDay <= 1.5 ? 'positive' : 'neutral'}
+          status={avgCyclesPerDay >= CY.optimal.min && avgCyclesPerDay <= CY.optimal.max ? 'positive' : 'neutral'}
           explanation={`${formatNumber(simulation.totalCycles, 0)} cycli per jaar`}
         />
 
@@ -81,7 +85,7 @@ export function BatteryUtilizationKPIs({ simulation, battery }: BatteryUtilizati
         <MetricCard
           label="Werkelijk rendement"
           value={formatPercentage(actualEfficiency)}
-          status={actualEfficiency >= theoreticalEfficiency * 0.95 ? 'positive' : 'neutral'}
+          status={actualEfficiency >= theoreticalEfficiency * KPI_THRESHOLDS.efficiencyPerformance ? 'positive' : 'neutral'}
           explanation={`Op basis van gemeten in/uit-verhouding`}
         />
 

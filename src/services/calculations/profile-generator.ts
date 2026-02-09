@@ -1,5 +1,6 @@
 import type { Sector } from '../../types/index.js';
 import { SECTOR_LOAD_SHAPES, SECTOR_WEEKEND_FACTOR } from '../../constants/index.js';
+import { MONTHLY_SEASONAL_FACTORS } from '../../constants/seasonal-factors.js';
 
 /**
  * Generates a synthetic hourly consumption profile based on annual totals.
@@ -34,7 +35,7 @@ export function generateHourlyProfile(
 
     // Seasonal variation (higher in winter for heating, summer for cooling)
     const month = Math.floor(dayOfYear / 30.44);
-    const seasonalFactor = [1.15, 1.1, 1.0, 0.9, 0.85, 0.9, 0.95, 0.95, 0.9, 1.0, 1.1, 1.15][month] ?? 1.0;
+    const seasonalFactor = MONTHLY_SEASONAL_FACTORS[month] ?? 1.0;
 
     hours[h] = Math.min(avgHourly * multiplier * seasonalFactor, peakKw);
   }

@@ -34,6 +34,11 @@ function safeValue(v: number): number {
   return isFinite(v) ? Math.round(v * 100) / 100 : 0;
 }
 
+/** Cap Infinity payback to 20 years so bar is visible instead of disappearing */
+function safePayback(v: number): number {
+  return isFinite(v) ? Math.round(v * 10) / 10 : 20;
+}
+
 /**
  * Scenario comparison with separate charts for EUR and years metrics.
  * Avoids mixing different units on the same Y-axis.
@@ -69,7 +74,7 @@ export function ScenarioComparison({ scenarios }: ScenarioComparisonProps) {
   const yearsChartData = [{
     metric: yearsMetric.label,
     ...Object.fromEntries(
-      scenarios.map((s) => [s.scenario, safeValue(s[yearsMetric.key])])
+      scenarios.map((s) => [s.scenario, safePayback(s[yearsMetric.key])])
     ),
   }];
 
@@ -137,6 +142,10 @@ export function ScenarioComparison({ scenarios }: ScenarioComparisonProps) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      <p className="mt-2 text-xs text-gray-400">
+        Terugverdientijd &gt; 20 jaar = investeringshorizon overschreden.
+      </p>
 
       {/* Detailed table below charts */}
       <div className="mt-6 overflow-x-auto">
