@@ -78,7 +78,7 @@ function runSingleAnalysis(
     grossInvestment,
     battery.annualMaintenanceCost,
     simulation.totalDischarged,
-    battery.lifespanYears,
+    financials.years,
     financials.discountRate,
     battery.annualDegradation
   );
@@ -185,12 +185,34 @@ export function calculateFullResult(
   subsidies: SubsidyConfig,
   financials: FinancialParams
 ): CalculationResult {
-  // Base scenario financial metrics (includes simulation)
-  const baseResult = runSingleAnalysis(battery, profile, tariffs, subsidies, financials);
+  // --- Cycle life enforcement ---
+  // Run simulation first to determine annual cycles
+  const initialSimulation = simulateBatteryOperation(profile, battery, tariffs);
+  const warnings: string[] = [];
+  const annualCycles = initialSimulation.totalCycles;
+  const cycleLifeYears = annualCycles > 0
+    ? Math.floor(battery.cycleLife / annualCycles)
+    : Infinity;
+  const effectiveLifespanYears = Math.min(financials.years, cycleLifeYears);
+
+  if (effectiveLifespanYears < financials.years) {
+    warnings.push(
+      `Batterij bereikt einde levenscyclus (${battery.cycleLife} cycli) na ${effectiveLifespanYears} jaar i.p.v. ${financials.years} jaar. Financiële berekeningen zijn aangepast.`
+    );
+  }
+
+  // Use adjusted financials for ALL calculations (base + scenarios)
+  const adjustedFinancials: FinancialParams = {
+    ...financials,
+    years: effectiveLifespanYears,
+  };
+
+  // Base scenario financial metrics (with adjusted horizon)
+  const baseResult = runSingleAnalysis(battery, profile, tariffs, subsidies, adjustedFinancials);
   const monthlyBreakdown = getMonthlyBreakdown(baseResult.simulation);
 
-  // All three scenarios
-  const scenarioResults = generateScenarios(battery, profile, tariffs, subsidies, financials);
+  // All three scenarios (with adjusted horizon)
+  const scenarioResults = generateScenarios(battery, profile, tariffs, subsidies, adjustedFinancials);
 
   // 3. Subsidy schedule (needed before cashflows to respect SDE++ 15-year limit)
   const subsidySchedule = generateSubsidySchedule(
@@ -198,7 +220,7 @@ export function calculateFullResult(
     subsidies,
     baseResult.simulation.totalDischarged,
     baseResult.grossInvestment,
-    financials.years
+    adjustedFinancials.years
   );
 
   // Generate cashflows for chart visualization (uses subsidySchedule to stop SDE++ after year 15)
@@ -206,8 +228,8 @@ export function calculateFullResult(
     baseResult.netInvestment,
     baseResult.annualSavings,
     battery.annualMaintenanceCost,
-    financials.years,
-    financials.electricityPriceGrowthRate,
+    adjustedFinancials.years,
+    adjustedFinancials.electricityPriceGrowthRate,
     battery.annualDegradation,
     baseResult.annualSubsidy,
     subsidySchedule
@@ -221,11 +243,11 @@ export function calculateFullResult(
     baseResult.netInvestment,
     baseResult.annualSavings,
     battery.annualMaintenanceCost,
-    financials.years,
-    financials.electricityPriceGrowthRate,
+    adjustedFinancials.years,
+    adjustedFinancials.electricityPriceGrowthRate,
     battery.annualDegradation,
     baseResult.annualSubsidy,
-    financials.discountRate,
+    adjustedFinancials.discountRate,
     subsidySchedule
   );
 
@@ -248,7 +270,7 @@ export function calculateFullResult(
     sdeEligible: false,
     eiaPercentage: 0,
   };
-  const noSubsidyResult = runSingleAnalysis(battery, profile, tariffs, noSubsidyConfig, financials);
+  const noSubsidyResult = runSingleAnalysis(battery, profile, tariffs, noSubsidyConfig, adjustedFinancials);
   const subsidyImpactEur = baseResult.npv - noSubsidyResult.npv;
 
   // 2. Operating regime breakdown
@@ -261,7 +283,7 @@ export function calculateFullResult(
   // 4. CO2 timeline
   const co2Timeline = [];
   let cumulativeCO2 = 0;
-  for (let year = 1; year <= financials.years; year++) {
+  for (let year = 1; year <= adjustedFinancials.years; year++) {
     const degradationFactor = Math.pow(1 - battery.annualDegradation, year - 1);
     const annualReductionKg = co2ReductionKg * degradationFactor;
     cumulativeCO2 += annualReductionKg;
@@ -279,8 +301,8 @@ export function calculateFullResult(
     baseResult.peakShavingSavings,
     battery.annualMaintenanceCost,
     subsidySchedule,
-    financials.years,
-    financials.electricityPriceGrowthRate,
+    adjustedFinancials.years,
+    adjustedFinancials.electricityPriceGrowthRate,
     battery.annualDegradation
   );
 
@@ -338,6 +360,8 @@ export function calculateFullResult(
     yearlyRevenueBreakdown,
     co2Timeline,
     paybackConfidence,
+    warnings,
+    effectiveLifespanYears,
   };
 }
 
@@ -456,14 +480,28 @@ export function sensitivityAnalysis(
     },
   ];
 
-  const baseNpv = runSingleAnalysis(battery, profile, tariffs, subsidies, financials).npv;
+  // Cycle life enforcement: compute effective lifespan (same logic as calculateFullResult)
+  const baseSim = simulateBatteryOperation(profile, battery, tariffs);
+  const baseCycleLifeYears = baseSim.totalCycles > 0
+    ? Math.floor(battery.cycleLife / baseSim.totalCycles)
+    : Infinity;
+  const baseEffectiveYears = Math.min(financials.years, baseCycleLifeYears);
+  const baseAdjustedFinancials: FinancialParams = { ...financials, years: baseEffectiveYears };
+
+  const baseNpv = runSingleAnalysis(battery, profile, tariffs, subsidies, baseAdjustedFinancials).npv;
 
   return variables.map((v) => {
     const low = v.applyLow();
     const high = v.applyHigh();
 
-    const lowNpv = runSingleAnalysis(low.battery, profile, low.tariffs, subsidies, low.financials).npv;
-    const highNpv = runSingleAnalysis(high.battery, profile, high.tariffs, subsidies, high.financials).npv;
+    // Each variant may have different cycle life due to changed battery/financials
+    const lowEffYears = Math.min(low.financials.years, baseCycleLifeYears);
+    const highEffYears = Math.min(high.financials.years, baseCycleLifeYears);
+    const lowAdjFin: FinancialParams = { ...low.financials, years: lowEffYears };
+    const highAdjFin: FinancialParams = { ...high.financials, years: highEffYears };
+
+    const lowNpv = runSingleAnalysis(low.battery, profile, low.tariffs, subsidies, lowAdjFin).npv;
+    const highNpv = runSingleAnalysis(high.battery, profile, high.tariffs, subsidies, highAdjFin).npv;
 
     return {
       variable: v.key,

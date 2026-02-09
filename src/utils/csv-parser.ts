@@ -139,6 +139,7 @@ export function parseKwartierData(csvText: string): KwartierDataParseResult {
 
   // Parse all rows, skip headers
   const values: number[] = [];
+  const rawValueStrings: string[] = [];
   let skippedHeaders = 0;
   let nanCount = 0;
 
@@ -147,6 +148,14 @@ export function parseKwartierData(csvText: string): KwartierDataParseResult {
     if (values.length === 0 && isHeaderRow(fields)) {
       skippedHeaders++;
       continue;
+    }
+    // Capture raw string for ambiguity detection
+    for (let i = fields.length - 1; i >= 0; i--) {
+      const trimmed = fields[i].trim();
+      if (!isNaN(parseDutchNumber(trimmed))) {
+        rawValueStrings.push(trimmed);
+        break;
+      }
     }
     const val = extractValue(fields);
     if (isNaN(val)) {
@@ -177,6 +186,22 @@ export function parseKwartierData(csvText: string): KwartierDataParseResult {
     warnings.push(`${nanCount} ongeldige waarden vervangen door 0.`);
   }
 
+  // Dutch thousands separator ambiguity detection
+  // Pattern: "1.234" could be Dutch 1234 or English 1.234
+  const dutchThousandsPattern = /^\d{1,3}\.\d{3}$/;
+  const hasCommasInData = rawValueStrings.some(s => s.includes(','));
+  if (!hasCommasInData && rawValueStrings.length > 0) {
+    const matchCount = rawValueStrings.filter(s => dutchThousandsPattern.test(s)).length;
+    if (matchCount / rawValueStrings.length > 0.5) {
+      const example = rawValueStrings.find(s => dutchThousandsPattern.test(s)) ?? '';
+      warnings.push(
+        `Let op: waarden zoals '${example}' worden als decimaal getal geïnterpreteerd ` +
+        `(bijv. 1.234 = 1,234 kWh). Als dit duizendscheidingstekens zijn ` +
+        `(1.234 = 1234 kWh), pas dan het format aan naar '1234' of '1.234,0'.`
+      );
+    }
+  }
+
   // Determine if data is quarter-hourly or hourly
   let hourly: number[];
   if (values.length >= QUARTERS_PER_YEAR * 0.8) {
@@ -200,6 +225,14 @@ export function parseKwartierData(csvText: string): KwartierDataParseResult {
 
   const annualConsumptionKwh = hourly.reduce((s, v) => s + v, 0);
   const peakDemandKw = Math.max(...hourly);
+
+  // Plausibility check: very low annual consumption for commercial connections
+  if (annualConsumptionKwh > 0 && annualConsumptionKwh < 5000) {
+    warnings.push(
+      `Jaarverbruik is erg laag (${Math.round(annualConsumptionKwh)} kWh). ` +
+      `Controleer of de data correct is geïmporteerd.`
+    );
+  }
 
   return {
     success: true,

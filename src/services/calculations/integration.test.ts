@@ -14,7 +14,7 @@ const battery: BatteryConfig = {
   powerKw: 50,
   roundTripEfficiency: 0.89,
   annualDegradation: 0.025,
-  cycleLife: 6000,
+  cycleLife: 12000,
   depthOfDischarge: 0.9,
   costPerKwh: 550,
   installationCost: 15000,

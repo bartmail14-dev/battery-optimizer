@@ -257,6 +257,10 @@ export interface CalculationResult {
   co2Timeline: CO2TimelineEntry[];
   /** Payback confidence based on scenario spread */
   paybackConfidence: PaybackConfidence;
+  /** Warnings generated during calculation (e.g. cycleLife exceeded) */
+  warnings: string[];
+  /** Effective lifespan in years, accounting for cycle life limits */
+  effectiveLifespanYears: number;
 }
 
 /** Full dashboard state */
