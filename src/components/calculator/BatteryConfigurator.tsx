@@ -58,14 +58,15 @@ const sectorIcons: Record<Sector, typeof Hotel> = {
 };
 
 export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCalculating, hasCustomProfile }: BatteryConfiguratorProps) {
-  // Convert 0-valued user fields to undefined so inputs render empty
+  // Convert 0-valued user fields to empty string so inputs render blank
+  const empty = '' as unknown as number;
   const formDefaults = {
     ...defaultValues,
-    annualConsumptionKwh: defaultValues.annualConsumptionKwh || undefined,
-    peakDemandKw: defaultValues.peakDemandKw || undefined,
-    connectionCapacityKw: defaultValues.connectionCapacityKw || undefined,
-    capacityKwh: defaultValues.capacityKwh || undefined,
-    powerKw: defaultValues.powerKw || undefined,
+    annualConsumptionKwh: defaultValues.annualConsumptionKwh || empty,
+    peakDemandKw: defaultValues.peakDemandKw || empty,
+    connectionCapacityKw: defaultValues.connectionCapacityKw || empty,
+    capacityKwh: defaultValues.capacityKwh || empty,
+    powerKw: defaultValues.powerKw || empty,
   };
 
   const {
