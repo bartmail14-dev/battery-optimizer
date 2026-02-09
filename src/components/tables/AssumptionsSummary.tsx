@@ -55,7 +55,7 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-function fmtMultiplier(base: number, mult: number): string {
+function fmtMultiplier(_base: number, mult: number): string {
   const pct = Math.round((mult - 1) * 100);
   return pct >= 0 ? `+${pct}%` : `${pct}%`;
 }

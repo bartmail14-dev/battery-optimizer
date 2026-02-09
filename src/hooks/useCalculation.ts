@@ -30,9 +30,9 @@ export function useCalculation() {
   const [subsidies, setSubsidies] = useState<SubsidyConfig>(DEFAULT_SUBSIDIES);
   const [financials, setFinancials] = useState<FinancialParams>(DEFAULT_FINANCIALS);
   const [sector, setSector] = useState<Sector>('hospitality');
-  const [annualConsumption, setAnnualConsumption] = useState(DEFAULT_PROFILE.annualConsumptionKwh);
-  const [peakDemand, setPeakDemand] = useState(DEFAULT_PROFILE.peakDemandKw);
-  const [connectionCapacity, setConnectionCapacity] = useState(DEFAULT_PROFILE.connectionCapacityKw);
+  const [annualConsumption, setAnnualConsumption] = useState<number>(DEFAULT_PROFILE.annualConsumptionKwh);
+  const [peakDemand, setPeakDemand] = useState<number>(DEFAULT_PROFILE.peakDemandKw);
+  const [connectionCapacity, setConnectionCapacity] = useState<number>(DEFAULT_PROFILE.connectionCapacityKw);
   const [selectedScenario, setSelectedScenario] = useState<Scenario>('base');
   const [results, setResults] = useState<CalculationResult | null>(null);
   const [sensitivity, setSensitivity] = useState<SensitivityDataPoint[] | null>(null);

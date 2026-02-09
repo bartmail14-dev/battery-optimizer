@@ -28,3 +28,10 @@ dist-ssr
 *.sln
 *.sw?
 server/data/*.db
+
+# Python
+__pycache__
+*.pyc
+
+.vercel
+.env*.local
