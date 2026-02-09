@@ -19,20 +19,23 @@ import {
   DEFAULT_TARIFFS,
   DEFAULT_SUBSIDIES,
   DEFAULT_FINANCIALS,
-  DEFAULT_PROFILE,
 } from '../constants';
 
 export { generateHourlyProfile } from '../services/calculations/profile-generator';
 
 export function useCalculation() {
-  const [batteryConfig, setBatteryConfig] = useState<BatteryConfig>(DEFAULT_BATTERY);
+  const [batteryConfig, setBatteryConfig] = useState<BatteryConfig>({
+    ...DEFAULT_BATTERY,
+    capacityKwh: 0,
+    powerKw: 0,
+  });
   const [tariffs, setTariffs] = useState<TariffStructure>(DEFAULT_TARIFFS);
   const [subsidies, setSubsidies] = useState<SubsidyConfig>(DEFAULT_SUBSIDIES);
   const [financials, setFinancials] = useState<FinancialParams>(DEFAULT_FINANCIALS);
-  const [sector, setSector] = useState<Sector>('hospitality');
-  const [annualConsumption, setAnnualConsumption] = useState<number>(DEFAULT_PROFILE.annualConsumptionKwh);
-  const [peakDemand, setPeakDemand] = useState<number>(DEFAULT_PROFILE.peakDemandKw);
-  const [connectionCapacity, setConnectionCapacity] = useState<number>(DEFAULT_PROFILE.connectionCapacityKw);
+  const [sector, setSector] = useState<Sector>('industrie');
+  const [annualConsumption, setAnnualConsumption] = useState<number>(0);
+  const [peakDemand, setPeakDemand] = useState<number>(0);
+  const [connectionCapacity, setConnectionCapacity] = useState<number>(0);
   const [selectedScenario, setSelectedScenario] = useState<Scenario>('base');
   const [results, setResults] = useState<CalculationResult | null>(null);
   const [sensitivity, setSensitivity] = useState<SensitivityDataPoint[] | null>(null);

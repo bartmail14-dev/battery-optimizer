@@ -58,6 +58,16 @@ const sectorIcons: Record<Sector, typeof Hotel> = {
 };
 
 export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCalculating, hasCustomProfile }: BatteryConfiguratorProps) {
+  // Convert 0-valued user fields to undefined so inputs render empty
+  const formDefaults = {
+    ...defaultValues,
+    annualConsumptionKwh: defaultValues.annualConsumptionKwh || undefined,
+    peakDemandKw: defaultValues.peakDemandKw || undefined,
+    connectionCapacityKw: defaultValues.connectionCapacityKw || undefined,
+    capacityKwh: defaultValues.capacityKwh || undefined,
+    powerKw: defaultValues.powerKw || undefined,
+  };
+
   const {
     register,
     handleSubmit,
@@ -67,7 +77,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(batterySchema),
-    defaultValues,
+    defaultValues: formDefaults as FormData,
   });
 
   const sector = watch('sector');
@@ -168,6 +178,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
             label="Jaarverbruik"
             unit="kWh"
             tooltip="Totaal elektriciteitsverbruik per jaar. Staat op uw jaarafrekening."
+            placeholder="bijv. 500000"
             error={errors.annualConsumptionKwh?.message}
             {...register('annualConsumptionKwh', { valueAsNumber: true })}
           />
@@ -175,6 +186,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
             label="Piekvermogen"
             unit="kW"
             tooltip="Maximaal gelijktijdig vermogen dat u afneemt. Bepaalt uw netwerktarief."
+            placeholder="bijv. 200"
             error={errors.peakDemandKw?.message}
             {...register('peakDemandKw', { valueAsNumber: true })}
           />
@@ -182,6 +194,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
             label="Aansluitcapaciteit"
             unit="kW"
             tooltip="Capaciteit van uw netaansluiting. Staat in uw contract met de netbeheerder."
+            placeholder="bijv. 300"
             error={errors.connectionCapacityKw?.message}
             {...register('connectionCapacityKw', { valueAsNumber: true })}
           />
@@ -290,6 +303,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
             label="Capaciteit"
             unit="kWh"
             tooltip="Hoeveel energie de batterij kan opslaan. Vergelijkbaar met het formaat van een watertank."
+            placeholder="Vul in of gebruik aanbeveling"
             error={errors.capacityKwh?.message}
             {...register('capacityKwh', { valueAsNumber: true })}
           />
@@ -297,6 +311,7 @@ export function BatteryConfigurator({ defaultValues, onSubmit, onRecommend, isCa
             label="Vermogen"
             unit="kW"
             tooltip="Hoe snel de batterij kan laden en ontladen. Vergelijkbaar met de diameter van een kraan."
+            placeholder="Vul in of gebruik aanbeveling"
             error={errors.powerKw?.message}
             {...register('powerKw', { valueAsNumber: true })}
           />
