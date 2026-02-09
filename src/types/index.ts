@@ -314,6 +314,63 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+/** Configuratie voor professioneel PDF-rapport */
+export interface PdfReportConfig {
+  clientName: string;
+  projectRef?: string;
+  reportDate?: string;
+  consultantName?: string;
+  includeAiAnalysis?: boolean;
+  aiReportText?: string;
+}
+
+/** Alle data voor volledig rapport */
+export interface FullReportData {
+  config: PdfReportConfig;
+  results: CalculationResult;
+  battery: BatteryConfig;
+  profile: EnergyProfile;
+  tariffs: TariffStructure;
+  subsidies: SubsidyConfig;
+  financials: FinancialParams;
+  sensitivity: SensitivityDataPoint[];
+}
+
+/** Configuratie voor Excel-export */
+export interface ExcelExportConfig {
+  clientName: string;
+  projectRef?: string;
+}
+
+/** Benoemde batterijconfiguratie voor vergelijking */
+export interface NamedBatteryConfig {
+  id: string;
+  label: string;
+  config: BatteryConfig;
+}
+
+/** Resultaat per configuratie in vergelijking */
+export interface ComparisonResult {
+  configId: string;
+  label: string;
+  config: BatteryConfig;
+  results: CalculationResult;
+  sensitivity: SensitivityDataPoint[];
+}
+
+/** Samenvatting opgeslagen project */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  description: string;
+  sector: string;
+  annualConsumptionKwh: number;
+  peakDemandKw: number;
+  dataSource: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Preset battery profile */
 export interface PresetProfile {
   name: string;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, GitCompareArrows } from 'lucide-react';
 import type { CalculationResult, BatteryConfig, EnergyProfile, FinancialParams } from '../types';
 import type { SensitivityDataPoint } from '../types';
 import {
@@ -153,6 +153,13 @@ export function ResultsPage({
         </button>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/vergelijking')}
+            className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+          >
+            <GitCompareArrows className="h-4 w-4" />
+            Vergelijken
+          </button>
           <ReportGenerator
             dashboardState={dashboardState}
             onReportGenerated={(report) => handleDownloadPDF(report)}

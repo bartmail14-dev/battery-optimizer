@@ -9,10 +9,11 @@ import type {
   Scenario,
   DashboardState,
   Sector,
+  SensitivityDataPoint,
 } from '../types';
 import { calculateViaAPI, sensitivityViaAPI } from '../services/api/api-client';
 import { generateHourlyProfile } from '../services/calculations/profile-generator';
-import type { SensitivityDataPoint } from '../types';
+import type { FullProject } from '../services/api/projects-client';
 import {
   DEFAULT_DISCOUNT_RATE,
   DEFAULT_INFLATION_RATE,
@@ -120,6 +121,22 @@ export function useCalculation() {
     }
   }, [batteryConfig, energyProfile, tariffs, subsidies, financials]);
 
+  const loadFromProject = useCallback((project: FullProject) => {
+    setBatteryConfig(project.batteryConfig);
+    setTariffs(project.tariffs);
+    setSubsidies(project.subsidies);
+    setFinancials(project.financials);
+    setSector(project.sector);
+    setAnnualConsumption(project.annualConsumptionKwh);
+    setPeakDemand(project.peakDemandKw);
+    setConnectionCapacity(project.connectionCapacityKw);
+    setCustomHourlyProfile(project.hourlyConsumptionKwh);
+    // Clear previous results so user recalculates with loaded data
+    setResults(null);
+    setSensitivity(null);
+    setError(null);
+  }, []);
+
   const dashboardState: DashboardState = {
     batteryConfig,
     energyProfile,
@@ -163,5 +180,6 @@ export function useCalculation() {
 
     // Actions
     calculate,
+    loadFromProject,
   };
 }

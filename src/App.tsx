@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { Battery, Zap } from 'lucide-react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Battery, Zap, Save } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useCalculation } from './hooks';
+import { useCalculation, useProjects } from './hooks';
 import { AdvisorChat } from './components/ai-advisor';
+import { ProjectSelector, SaveProjectDialog } from './components/projects';
 import { InputPage } from './pages/InputPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { ReportPage } from './pages/ReportPage';
+import { ComparisonPage } from './pages/ComparisonPage';
 
 const STEPS = [
   { path: '/', label: 'Invoer', step: 1 },
   { path: '/results', label: 'Resultaten', step: 2 },
   { path: '/report', label: 'Rapport', step: 3 },
+  { path: '/vergelijking', label: 'Vergelijking', step: 4 },
 ];
 
 function StepIndicator() {
@@ -58,7 +61,35 @@ function StepIndicator() {
 
 function AppContent() {
   const calc = useCalculation();
+  const projectsHook = useProjects();
+  const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
+  async function handleSelectProject(id: string) {
+    const project = await projectsHook.loadProject(id);
+    if (project) {
+      calc.loadFromProject(project);
+      navigate('/');
+    }
+  }
+
+  async function handleSaveProject(name: string, description: string) {
+    await projectsHook.saveProject(name, description, {
+      name,
+      description,
+      sector: calc.sector,
+      batteryConfig: calc.batteryConfig,
+      annualConsumptionKwh: calc.annualConsumption,
+      peakDemandKw: calc.peakDemand,
+      connectionCapacityKw: calc.connectionCapacity,
+      dataSource: calc.customHourlyProfile ? 'csv' : 'synthetic',
+      tariffConfig: calc.tariffs,
+      subsidyConfig: calc.subsidies,
+      financialParams: calc.financials,
+      hourlyConsumptionKwh: calc.customHourlyProfile ?? undefined,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,9 +105,27 @@ function AppContent() {
               <span className="ml-2 text-sm text-gray-500">Battery Optimizer</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            <Zap className="h-3 w-3" />
-            Powered by COMCAM Energieconsultancy
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSaveDialogOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              title="Project opslaan"
+            >
+              <Save className="h-4 w-4 text-gray-400" />
+              Opslaan
+            </button>
+            <ProjectSelector
+              projects={projectsHook.projects}
+              currentProjectId={projectsHook.currentProjectId}
+              isLoading={projectsHook.isLoading}
+              onLoadProjects={projectsHook.loadProjects}
+              onSelectProject={handleSelectProject}
+              onDeleteProject={projectsHook.deleteProject}
+            />
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <Zap className="h-3 w-3" />
+              Powered by COMCAM
+            </div>
           </div>
         </div>
         <StepIndicator />
@@ -131,6 +180,19 @@ function AppContent() {
                 energyProfile={calc.energyProfile}
                 financials={calc.financials}
                 dashboardState={calc.dashboardState}
+                sensitivity={calc.sensitivity}
+              />
+            }
+          />
+          <Route
+            path="/vergelijking"
+            element={
+              <ComparisonPage
+                batteryConfig={calc.batteryConfig}
+                energyProfile={calc.energyProfile}
+                tariffs={calc.tariffs}
+                subsidies={calc.subsidies}
+                financials={calc.financials}
               />
             }
           />
@@ -142,6 +204,14 @@ function AppContent() {
         dashboardState={calc.dashboardState}
         isOpen={chatOpen}
         onToggle={() => setChatOpen(!chatOpen)}
+      />
+
+      {/* Save Project Dialog */}
+      <SaveProjectDialog
+        isOpen={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+        onSave={handleSaveProject}
+        isLoading={projectsHook.isLoading}
       />
     </div>
   );
