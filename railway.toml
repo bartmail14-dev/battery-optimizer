@@ -1,5 +1,5 @@
 [build]
-buildCommand = "npm install && cd server && npm install && npm run build"
+buildCommand = "npm install --force && cd server && npm install --force && npm run build"
 
 [deploy]
 startCommand = "cd server && npm run start"
