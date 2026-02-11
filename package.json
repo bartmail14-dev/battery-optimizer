@@ -17,7 +17,6 @@
     "db:migrate": "npm --prefix server run db:migrate"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.73.0",
     "@hookform/resolvers": "^5.2.2",
     "@react-pdf/renderer": "^4.3.2",
     "@tailwindcss/vite": "^4.1.18",

@@ -10,6 +10,7 @@
     "db:migrate": "tsx src/db/migrations.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.40.0",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "decimal.js": "^10.6.0",

@@ -6,6 +6,7 @@ import { errorHandler } from './middleware/error-handler.js';
 import healthRouter from './routes/health.js';
 import calculateRouter from './routes/calculate.js';
 import profilesRouter from './routes/profiles.js';
+import adviseRouter from './routes/advise.js';
 
 export function createApp() {
   const app = express();
@@ -19,6 +20,7 @@ export function createApp() {
   app.use('/api', healthRouter);
   app.use('/api', calculateRouter);
   app.use('/api', profilesRouter);
+  app.use('/api', adviseRouter);
 
   // Error handler (must be last)
   app.use(errorHandler);

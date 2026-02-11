@@ -1,9 +1,2 @@
-export {
-  isAIAvailable,
-  getRemainingMessages,
-  getSessionUsage,
-  sendMessage,
-  sendMessageStreaming,
-  MODELS,
-} from './anthropic-client';
-export type { ModelTier } from './anthropic-client';
+export { calculateViaAPI, sensitivityViaAPI, recommendViaAPI, healthCheck } from './api-client';
+export { adviseViaSSE, generateReportViaAPI } from './advise-client';

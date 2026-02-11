@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { BatteryConfigurator } from '../components/calculator';
 import { KwartierDataUpload } from '../components/calculator/KwartierDataUpload';
-import { DataExtractor } from '../components/ai-advisor';
 import type { BatteryConfig, EnergyProfile, Sector, TariffStructure, SubsidyConfig, FinancialParams } from '../types';
 import { generateHourlyProfile } from '../services/calculations/profile-generator';
 import { recommendViaAPI } from '../services/api/api-client';
@@ -108,16 +107,6 @@ export function InputPage({
     calculate({ batteryConfig: freshBattery, energyProfile: freshProfile });
   }
 
-  function handleDataExtracted(data: {
-    annualConsumptionKwh?: number;
-    peakDemandKw?: number;
-    connectionCapacityKw?: number;
-  }) {
-    if (data.annualConsumptionKwh) setAnnualConsumption(data.annualConsumptionKwh);
-    if (data.peakDemandKw) setPeakDemand(data.peakDemandKw);
-    if (data.connectionCapacityKw) setConnectionCapacity(data.connectionCapacityKw);
-  }
-
   async function handleRecommend(profileData: {
     sector: Sector;
     annualConsumptionKwh: number;
@@ -159,8 +148,6 @@ export function InputPage({
         onClear={() => setCustomHourlyProfile(null)}
         hasCustomProfile={hasCustomProfile}
       />
-
-      <DataExtractor onDataExtracted={handleDataExtracted} />
 
       <BatteryConfigurator
         defaultValues={{

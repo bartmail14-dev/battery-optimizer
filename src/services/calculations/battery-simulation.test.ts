@@ -282,14 +282,14 @@ describe('getMonthlyBreakdown', () => {
   it('returns 12 months', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     expect(months).toHaveLength(12);
   });
 
   it('has correct month labels', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     expect(months[0].label).toBe('Januari');
     expect(months[5].label).toBe('Juni');
     expect(months[11].label).toBe('December');
@@ -298,7 +298,7 @@ describe('getMonthlyBreakdown', () => {
   it('monthly savings sum approximately equals annual savings', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     const totalMonthlySavings = months.reduce((sum, m) => sum + m.savings, 0);
     expect(totalMonthlySavings).toBeCloseTo(sim.totalSavings, 0);
   });
@@ -306,14 +306,14 @@ describe('getMonthlyBreakdown', () => {
   it('month indices are 0 through 11', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     months.forEach((m, i) => expect(m.month).toBe(i));
   });
 
   it('monthly costWithout sums to annual costWithout', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     const totalCostWithout = months.reduce((sum, m) => sum + m.costWithout, 0);
     expect(totalCostWithout).toBeCloseTo(sim.totalCostWithoutBattery, 0);
   });
@@ -321,7 +321,7 @@ describe('getMonthlyBreakdown', () => {
   it('monthly costWith sums to annual costWith', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     const totalCostWith = months.reduce((sum, m) => sum + m.costWith, 0);
     expect(totalCostWith).toBeCloseTo(sim.totalCostWithBattery, 0);
   });
@@ -329,7 +329,7 @@ describe('getMonthlyBreakdown', () => {
   it('savings = costWithout - costWith for each month', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     for (const m of months) {
       expect(m.savings).toBeCloseTo(m.costWithout - m.costWith, 2);
     }
@@ -338,7 +338,7 @@ describe('getMonthlyBreakdown', () => {
   it('all monthly energy values are non-negative', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     for (const m of months) {
       expect(m.energyCharged).toBeGreaterThanOrEqual(0);
       expect(m.energyDischarged).toBeGreaterThanOrEqual(0);
@@ -349,7 +349,7 @@ describe('getMonthlyBreakdown', () => {
   it('January (31 days) has more cost than February (28 days) for flat profile', () => {
     const profile = makeProfile(20);
     const sim = simulateBatteryOperation(profile, baseBattery, baseTariffs);
-    const months = getMonthlyBreakdown(sim);
+    const months = getMonthlyBreakdown(sim, baseBattery);
     expect(months[0].costWithout).toBeGreaterThan(months[1].costWithout);
   });
 });

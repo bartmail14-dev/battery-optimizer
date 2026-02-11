@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import type {
   BatteryConfig,
   EnergyProfile,
@@ -11,7 +11,8 @@ import type {
   Sector,
   SensitivityDataPoint,
 } from '../types';
-import { calculateViaAPI, sensitivityViaAPI } from '../services/api/api-client';
+import { sensitivityViaAPI } from '../services/api/api-client';
+import { adviseViaSSE } from '../services/api/advise-client';
 import { generateHourlyProfile } from '../services/calculations/profile-generator';
 import type { FullProject } from '../services/api/projects-client';
 import {
@@ -43,6 +44,12 @@ export function useCalculation() {
   const [error, setError] = useState<string | null>(null);
   const [customHourlyProfile, setCustomHourlyProfile] = useState<number[] | null>(null);
 
+  // AI narrative state
+  const [narrative, setNarrative] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
   const energyProfile = useMemo<EnergyProfile>(() => ({
     hourlyConsumptionKwh: customHourlyProfile ?? generateHourlyProfile(annualConsumption, peakDemand, sector),
     peakDemandKw: peakDemand,
@@ -59,33 +66,57 @@ export function useCalculation() {
     subsidies?: SubsidyConfig;
     financials?: FinancialParams;
   }) => {
+    // Abort any running stream
+    abortRef.current?.abort();
+
     setIsCalculating(true);
     setError(null);
+    setNarrative('');
+    setNarrativeError(null);
+    setIsStreaming(true);
 
-    // Use overrides if provided (avoids stale closure when called right after setState)
     const bat = overrides?.batteryConfig ?? batteryConfig;
     const prof = overrides?.energyProfile ?? energyProfile;
     const tar = overrides?.tariffs ?? tariffs;
     const sub = overrides?.subsidies ?? subsidies;
     const fin = overrides?.financials ?? financials;
 
+    // Start SSE stream (calculation + AI narrative)
+    const controller = adviseViaSSE(bat, prof, tar, sub, fin, {
+      onResults: (calcResults) => {
+        setResults(calcResults);
+        setIsCalculating(false);
+      },
+      onNarrativeChunk: (chunk) => {
+        setNarrative(prev => prev + chunk);
+      },
+      onDone: () => {
+        setIsStreaming(false);
+      },
+      onError: (errMsg) => {
+        if (!results) {
+          // If we haven't received results yet, this is a calculation error
+          setError(errMsg);
+          setIsCalculating(false);
+        }
+        setNarrativeError(errMsg);
+        setIsStreaming(false);
+      },
+    });
+
+    abortRef.current = controller;
+
+    // Run sensitivity in parallel (separate endpoint)
     try {
-      const [result, sensitivityData] = await Promise.all([
-        calculateViaAPI(bat, prof, tar, sub, fin),
-        sensitivityViaAPI(bat, prof, tar, sub, fin),
-      ]);
-      setResults(result);
+      const sensitivityData = await sensitivityViaAPI(bat, prof, tar, sub, fin);
       setSensitivity(sensitivityData);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Berekening mislukt';
-      setError(message);
-      console.error('Calculation failed:', err);
-    } finally {
-      setIsCalculating(false);
+      console.error('Sensitivity analysis failed:', err);
     }
-  }, [batteryConfig, energyProfile, tariffs, subsidies, financials]);
+  }, [batteryConfig, energyProfile, tariffs, subsidies, financials, results]);
 
   const loadFromProject = useCallback((project: FullProject) => {
+    abortRef.current?.abort();
     setBatteryConfig(project.batteryConfig);
     setTariffs(project.tariffs);
     setSubsidies(project.subsidies);
@@ -95,9 +126,10 @@ export function useCalculation() {
     setPeakDemand(project.peakDemandKw);
     setConnectionCapacity(project.connectionCapacityKw);
     setCustomHourlyProfile(project.hourlyConsumptionKwh);
-    // Clear previous results so user recalculates with loaded data
     setResults(null);
     setSensitivity(null);
+    setNarrative('');
+    setNarrativeError(null);
     setError(null);
   }, []);
 
@@ -129,6 +161,9 @@ export function useCalculation() {
     energyProfile,
     dashboardState,
     customHourlyProfile,
+    narrative,
+    isStreaming,
+    narrativeError,
 
     // Setters
     setBatteryConfig,

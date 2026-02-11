@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
 import type {
   CalculationResult, BatteryConfig, EnergyProfile, FinancialParams,
   DashboardState, SensitivityDataPoint, PdfReportConfig,
 } from '../types';
-import { isAIAvailable, sendMessage } from '../services/api';
+import { generateReportViaAPI } from '../services/api/advise-client';
 import { downloadPDF } from '../services/pdf-export';
 import { downloadFullReport } from '../services/pdf-report';
 import { downloadExcel } from '../services/excel-export';
-import { formatEuro, formatYears, formatPercentage, formatEnergy } from '../utils/format';
+import { formatEuro, formatYears, formatPercentage } from '../utils/format';
 
 interface ReportPageProps {
   results: CalculationResult | null;
@@ -33,6 +33,7 @@ export function ReportPage({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Report config form state
   const [clientName, setClientName] = useState('');
@@ -57,30 +58,18 @@ export function ReportPage({
   async function generateReport() {
     if (!results) return;
     setIsGenerating(true);
+    setGenerateError(null);
     try {
-      const prompt = `Schrijf een directierapport (max 600 woorden) voor deze batterijopslag-investering.
-
-GEGEVENS:
-- Sector: ${energyProfile.sector}
-- Jaarverbruik: ${formatEnergy(energyProfile.annualConsumptionKwh)}
-- Batterij: ${batteryConfig.capacityKwh} kWh / ${batteryConfig.powerKw} kW
-- Investering: ${formatEuro(results.grossInvestment)}
-- Jaarlijkse besparing: ${formatEuro(results.annualSavings)}
-- Terugverdientijd: ${formatYears(results.simplePayback)}
-- NPV: ${formatEuro(results.npv)}
-- IRR: ${isFinite(results.irr) ? formatPercentage(results.irr) : 'n.v.t.'}
-
-SCENARIO'S:
-${results.scenarioResults.map((s: { scenario: string; npv: number; simplePayback: number }) => `${s.scenario}: NPV ${formatEuro(s.npv)}, terugverdientijd ${formatYears(s.simplePayback)}`).join('\n')}
-
-Gebruik paragrafen met headers. Wees overtuigend maar eerlijk.`;
-
-      const report = await sendMessage(
-        'Je bent een senior energieconsultant. Schrijf in het Nederlands voor directie/CFO.',
-        prompt,
-        'smart'
+      const { narrative } = await generateReportViaAPI(
+        batteryConfig,
+        energyProfile,
+        dashboardState.tariffs,
+        dashboardState.subsidies,
+        financials
       );
-      if (report) setAiReport(report);
+      setAiReport(narrative);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Rapport generatie mislukt');
     } finally {
       setIsGenerating(false);
     }
@@ -266,14 +255,14 @@ Gebruik paragrafen met headers. Wees overtuigend maar eerlijk.`;
       </section>
 
       {/* AI Report */}
-      {isAIAvailable() && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Analyse & aanbeveling</h2>
-          {aiReport ? (
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
-              {aiReport}
-            </div>
-          ) : (
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">AI Analyse & Aanbeveling</h2>
+        {aiReport ? (
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
+            {aiReport}
+          </div>
+        ) : (
+          <div>
             <button
               onClick={generateReport}
               disabled={isGenerating}
@@ -285,12 +274,18 @@ Gebruik paragrafen met headers. Wees overtuigend maar eerlijk.`;
                   Genereren...
                 </>
               ) : (
-                'Genereer AI-analyse'
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Genereer AI-analyse
+                </>
               )}
             </button>
-          )}
-        </section>
-      )}
+            {generateError && (
+              <p className="mt-2 text-sm text-red-600">{generateError}</p>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Disclaimer */}
       <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">

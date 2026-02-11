@@ -1,60 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, GitCompareArrows } from 'lucide-react';
+import { ArrowLeft, Download, GitCompareArrows, ChevronDown, ChevronUp } from 'lucide-react';
 import type { CalculationResult, BatteryConfig, EnergyProfile, FinancialParams } from '../types';
 import type { SensitivityDataPoint } from '../types';
-import {
-  ExecutiveSummary,
-  GoNoGoVerdict,
-  WorstCaseCard,
-  BatteryUtilizationKPIs,
-  CycleLifeIndicator,
-  GridIndependenceMetrics,
-  CO2ReductionCard,
-  DataQualityBadge,
-  SectorBenchmark,
-  BatteryCostBenchmark,
-  PaybackConfidenceRange,
-} from '../components/dashboard';
+import { GoNoGoVerdict } from '../components/dashboard';
 import {
   SavingsChart,
   ScenarioComparison,
-  EnergyProfileChart,
-  SensitivityTornado,
-  MonthlyBreakdownChart,
-  StateOfChargeChart,
-  PeakDemandChart,
-  RevenueBreakdownChart,
-  DegradationChart,
   InvestmentWaterfall,
-  LcosComparison,
-  CapitalCostComparison,
-  CashflowWaterfall,
-  WeeklyHeatmap,
-  GridImportProfile,
-  MonthlyPeakComparison,
-  AllInCostComparison,
-  EpexPriceOverlay,
-  SubsidyImpactComparison,
-  SubsidyScheduleChart,
-  OperatingRegimePie,
-  RevenueBySourceTimeline,
-  CO2CumulativeTimeline,
+  MonthlyBreakdownChart,
 } from '../components/charts';
-import { DcfTable, PeakEventTable, MonthlySavingsTable, AssumptionsSummary } from '../components/tables';
-import { ReportGenerator } from '../components/ai-advisor';
+import { AINarrative } from '../components/ai-narrative/AINarrative';
 import { downloadPDF } from '../services/pdf-export';
-import { formatEuro, formatNumber } from '../utils/format';
-
-type TabId = 'samenvatting' | 'financieel' | 'technisch' | 'operationeel' | 'risico';
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'samenvatting', label: 'Samenvatting' },
-  { id: 'financieel', label: 'Financieel' },
-  { id: 'technisch', label: 'Technisch' },
-  { id: 'operationeel', label: 'Operationeel' },
-  { id: 'risico', label: 'Risico & Markt' },
-];
+import { formatEuro, formatNumber, formatPercentage, formatYears } from '../utils/format';
 
 interface ResultsPageProps {
   results: CalculationResult | null;
@@ -65,20 +23,24 @@ interface ResultsPageProps {
   dashboardState: import('../types').DashboardState;
   isCalculating?: boolean;
   error?: string | null;
+  narrative: string;
+  isStreaming: boolean;
+  narrativeError?: string | null;
 }
 
 export function ResultsPage({
   results,
-  sensitivity,
   batteryConfig,
   energyProfile,
   financials,
-  dashboardState,
   isCalculating,
   error,
+  narrative,
+  isStreaming,
+  narrativeError,
 }: ResultsPageProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>('samenvatting');
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   if (isCalculating) {
     return (
@@ -90,7 +52,7 @@ export function ResultsPage({
     );
   }
 
-  if (error) {
+  if (error && !results) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
         <p className="text-lg text-red-600">Er is een fout opgetreden: {error}</p>
@@ -120,28 +82,20 @@ export function ResultsPage({
     );
   }
 
-  const tariffs = dashboardState.tariffs;
   const cashflows = results.cashflows;
-  const hourlyConsumption = results.simulation.hourlyResults.map((h) => h.consumption);
-  const batteryCharge = results.simulation.hourlyResults.map((h) => h.batteryCharge);
-  const batteryDischarge = results.simulation.hourlyResults.map((h) => h.batteryDischarge);
 
-  const pessimisticScenario = results.scenarioResults.find(
-    (s) => s.scenario === 'pessimistic'
-  );
-
-  async function handleDownloadPDF(aiReport?: string) {
+  async function handleDownloadPDF() {
     await downloadPDF({
       results: results!,
       battery: batteryConfig,
       profile: energyProfile,
       financials,
-      aiReport,
+      aiReport: narrative || undefined,
     });
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
       {/* Navigation */}
       <div className="flex items-center justify-between">
         <button
@@ -151,7 +105,6 @@ export function ResultsPage({
           <ArrowLeft className="h-4 w-4" />
           Terug naar invoer
         </button>
-
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/vergelijking')}
@@ -160,10 +113,6 @@ export function ResultsPage({
             <GitCompareArrows className="h-4 w-4" />
             Vergelijken
           </button>
-          <ReportGenerator
-            dashboardState={dashboardState}
-            onReportGenerated={(report) => handleDownloadPDF(report)}
-          />
           <button
             onClick={() => handleDownloadPDF()}
             className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
@@ -174,250 +123,140 @@ export function ResultsPage({
         </div>
       </div>
 
-      {/* Tab Bar */}
-      <div className="overflow-x-auto border-b border-gray-200">
-        <nav className="-mb-px flex gap-6" aria-label="Tabs">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition ${
-                activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      {/* 1. Go/No-Go Verdict (compact) */}
+      <GoNoGoVerdict results={results} financials={financials} />
+
+      {/* 2. AI Narratief (hoofdcontent) */}
+      <AINarrative
+        narrative={narrative}
+        isStreaming={isStreaming}
+        error={narrativeError}
+      />
+
+      {/* 3. KPI Kaarten */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">NPV</p>
+          <p className={`mt-1 text-2xl font-bold ${results.npv >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatEuro(results.npv)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Terugverdientijd</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">
+            {formatYears(results.simplePayback)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IRR</p>
+          <p className={`mt-1 text-2xl font-bold ${results.irr > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatPercentage(results.irr)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Jaarlijkse besparing</p>
+          <p className="mt-1 text-2xl font-bold text-blue-600">
+            {formatEuro(results.arbitrageSavings + results.peakShavingSavings + results.annualSubsidy)}
+          </p>
+        </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'samenvatting' && (
-        <div className="space-y-6">
-          {/* Go/No-Go Verdict */}
-          <GoNoGoVerdict results={results} financials={financials} />
+      {/* 4. Grafieken ter onderbouwing */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ScenarioComparison scenarios={results.scenarioResults} />
+        <SavingsChart
+          cashflows={cashflows}
+          years={financials.years}
+          paybackYear={results.simplePayback}
+        />
+      </div>
 
-          {/* Executive Summary (5 metric cards) */}
-          <ExecutiveSummary results={results} />
+      <InvestmentWaterfall
+        grossInvestment={results.grossInvestment}
+        netInvestment={results.netInvestment}
+        yearlyBreakdown={results.yearlyBreakdown}
+        peakShavingSavings={results.peakShavingSavings}
+        annualSubsidy={results.annualSubsidy}
+        maintenanceCost={batteryConfig.annualMaintenanceCost}
+        years={financials.years}
+      />
 
-          {/* Payback Confidence Range */}
-          {results.paybackConfidence && (
-            <PaybackConfidenceRange paybackConfidence={results.paybackConfidence} />
+      <MonthlyBreakdownChart data={results.monthlyBreakdown} />
+
+      {/* 5. Meer details (uitklapbaar) */}
+      <div className="rounded-xl border border-gray-200 bg-white">
+        <button
+          onClick={() => setDetailsOpen(!detailsOpen)}
+          className="flex w-full items-center justify-between p-5 text-left"
+        >
+          <span className="text-sm font-semibold text-gray-700">Meer details</span>
+          {detailsOpen ? (
+            <ChevronUp className="h-4 w-4 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-400" />
           )}
-
-          {/* Investment Waterfall */}
-          <InvestmentWaterfall
-            grossInvestment={results.grossInvestment}
-            netInvestment={results.netInvestment}
-            yearlyBreakdown={results.yearlyBreakdown}
-            peakShavingSavings={results.peakShavingSavings}
-            annualSubsidy={results.annualSubsidy}
-            maintenanceCost={batteryConfig.annualMaintenanceCost}
-            years={financials.years}
-          />
-
-          {/* LCOS Comparison */}
-          <LcosComparison
-            lcos={results.lcos}
-            blendedGridPrice={results.blendedGridPrice}
-            peakRate={tariffs.peakRate}
-            offPeakRate={tariffs.offPeakRate}
-          />
-
-          {/* Worst Case Card */}
-          {pessimisticScenario && (
-            <WorstCaseCard pessimisticScenario={pessimisticScenario} />
-          )}
-
-          {/* Capital Cost Comparison */}
-          <CapitalCostComparison irr={results.irr} />
-
-          {/* Investment Breakdown (existing) */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <h3 className="mb-4 text-lg font-semibold text-gray-800">Investeringsoverzicht</h3>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        </button>
+        {detailsOpen && (
+          <div className="border-t border-gray-100 p-5">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <div>
                 <p className="text-xs text-gray-500">Bruto investering</p>
-                <p className="text-lg font-semibold text-gray-900">{formatEuro(results.grossInvestment)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">EIA voordeel</p>
-                <p className="text-lg font-semibold text-green-600">
-                  -{formatEuro(results.grossInvestment - results.netInvestment)}
-                </p>
+                <p className="text-sm font-semibold text-gray-900">{formatEuro(results.grossInvestment)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Netto investering</p>
-                <p className="text-lg font-semibold text-gray-900">{formatEuro(results.netInvestment)}</p>
+                <p className="text-sm font-semibold text-gray-900">{formatEuro(results.netInvestment)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Arbitrage besparing</p>
+                <p className="text-sm font-semibold text-blue-600">{formatEuro(results.arbitrageSavings)}/jr</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Piekbesparing</p>
-                <p className="text-lg font-semibold text-blue-600">
-                  {formatEuro(results.peakShavingSavings)}/jr
-                </p>
+                <p className="text-sm font-semibold text-blue-600">{formatEuro(results.peakShavingSavings)}/jr</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Piekreductie</p>
-                <p className="text-lg font-semibold text-blue-600">
-                  {formatNumber(results.peakReductionKw, 1)} kW
-                </p>
+                <p className="text-sm font-semibold text-blue-600">{formatNumber(results.peakReductionKw, 1)} kW</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">SDE++ subsidie</p>
-                <p className="text-lg font-semibold text-green-600">
-                  {formatEuro(results.annualSubsidy)}/jr
-                </p>
+                <p className="text-sm font-semibold text-green-600">{formatEuro(results.annualSubsidy)}/jr</p>
               </div>
+              <div>
+                <p className="text-xs text-gray-500">LCOS</p>
+                <p className="text-sm font-semibold text-gray-900">{formatEuro(results.lcos, 4)}/kWh</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">CO2 reductie</p>
+                <p className="text-sm font-semibold text-green-600">{formatNumber(results.co2ReductionKg, 0)} kg/jr</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Jaarlijkse cycli</p>
+                <p className="text-sm font-semibold text-gray-900">{formatNumber(results.simulation.totalCycles, 0)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Blended grid price</p>
+                <p className="text-sm font-semibold text-gray-900">{formatEuro(results.blendedGridPrice, 4)}/kWh</p>
+              </div>
+              {results.noSubsidyNpv !== undefined && (
+                <div>
+                  <p className="text-xs text-gray-500">NPV zonder subsidie</p>
+                  <p className={`text-sm font-semibold ${results.noSubsidyNpv >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatEuro(results.noSubsidyNpv)}
+                  </p>
+                </div>
+              )}
+              {results.noSubsidyPayback !== undefined && (
+                <div>
+                  <p className="text-xs text-gray-500">Payback zonder subsidie</p>
+                  <p className="text-sm font-semibold text-gray-900">{formatYears(results.noSubsidyPayback)}</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
-
-      {activeTab === 'financieel' && (
-        <div className="space-y-6">
-          {/* Existing: SavingsChart + ScenarioComparison */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <SavingsChart
-              cashflows={cashflows}
-              years={financials.years}
-              paybackYear={results.simplePayback}
-            />
-            <ScenarioComparison scenarios={results.scenarioResults} />
-          </div>
-
-          {/* Existing: RevenueBreakdownChart */}
-          <RevenueBreakdownChart
-            arbitrageSavings={results.arbitrageSavings}
-            peakShavingSavings={results.peakShavingSavings}
-            annualSubsidy={results.annualSubsidy}
-            maintenanceCost={batteryConfig.annualMaintenanceCost}
-          />
-
-          {/* New: CashflowWaterfall */}
-          <CashflowWaterfall yearlyBreakdown={results.yearlyBreakdown} />
-
-          {/* New: DcfTable */}
-          <DcfTable yearlyBreakdown={results.yearlyBreakdown} />
-
-          {/* Existing: DegradationChart */}
-          <DegradationChart yearlyBreakdown={results.yearlyBreakdown} />
-
-          {/* New: SubsidyImpactComparison */}
-          <SubsidyImpactComparison
-            npv={results.npv}
-            noSubsidyNpv={results.noSubsidyNpv}
-            simplePayback={results.simplePayback}
-            noSubsidyPayback={results.noSubsidyPayback}
-            irr={results.irr}
-            noSubsidyIrr={results.noSubsidyIrr}
-            subsidyImpactEur={results.subsidyImpactEur}
-          />
-
-          {/* New: SubsidyScheduleChart */}
-          {results.subsidySchedule && (
-            <SubsidyScheduleChart subsidySchedule={results.subsidySchedule} />
-          )}
-
-          {/* New: RevenueBySourceTimeline */}
-          {results.yearlyRevenueBreakdown && (
-            <RevenueBySourceTimeline yearlyRevenueBreakdown={results.yearlyRevenueBreakdown} />
-          )}
-        </div>
-      )}
-
-      {activeTab === 'technisch' && (
-        <div className="space-y-6">
-          <BatteryUtilizationKPIs
-            simulation={results.simulation}
-            battery={batteryConfig}
-          />
-
-          {/* New: OperatingRegimePie */}
-          {results.operatingRegime && (
-            <OperatingRegimePie operatingRegime={results.operatingRegime} />
-          )}
-
-          <CycleLifeIndicator
-            totalCycles={results.simulation.totalCycles}
-            cycleLife={batteryConfig.cycleLife}
-            lifespanYears={batteryConfig.lifespanYears}
-          />
-          <StateOfChargeChart hourlyResults={results.simulation.hourlyResults} />
-          <PeakDemandChart
-            hourlyResults={results.simulation.hourlyResults}
-            peakReductionKw={results.peakReductionKw}
-          />
-        </div>
-      )}
-
-      {activeTab === 'operationeel' && (
-        <div className="space-y-6">
-          <GridIndependenceMetrics
-            hourlyResults={results.simulation.hourlyResults}
-            annualConsumptionKwh={energyProfile.annualConsumptionKwh}
-          />
-          <EnergyProfileChart
-            hourlyConsumption={hourlyConsumption}
-            batteryCharge={batteryCharge}
-            batteryDischarge={batteryDischarge}
-          />
-          <GridImportProfile hourlyResults={results.simulation.hourlyResults} />
-          <WeeklyHeatmap hourlyResults={results.simulation.hourlyResults} />
-          <MonthlyPeakComparison hourlyResults={results.simulation.hourlyResults} />
-          <PeakEventTable hourlyResults={results.simulation.hourlyResults} />
-          <MonthlyBreakdownChart data={results.monthlyBreakdown} />
-          <MonthlySavingsTable monthlyBreakdown={results.monthlyBreakdown} />
-        </div>
-      )}
-
-      {activeTab === 'risico' && (
-        <div className="space-y-6">
-          <DataQualityBadge dataSource={energyProfile.dataSource ?? 'synthetic'} />
-
-          <SectorBenchmark
-            simplePayback={results.simplePayback}
-            sector={energyProfile.sector}
-            subsidyEnabled={dashboardState.subsidies.sdeEligible}
-          />
-
-          <BatteryCostBenchmark costPerKwh={batteryConfig.costPerKwh} />
-
-          <CO2ReductionCard co2ReductionKg={results.co2ReductionKg} />
-
-          {/* New: CO2CumulativeTimeline */}
-          {results.co2Timeline && (
-            <CO2CumulativeTimeline co2Timeline={results.co2Timeline} />
-          )}
-
-          <AllInCostComparison
-            blendedGridPrice={results.blendedGridPrice}
-            totalCostWithBattery={results.simulation.totalCostWithBattery}
-            annualConsumptionKwh={energyProfile.annualConsumptionKwh}
-            lcos={results.lcos}
-          />
-
-          {sensitivity && sensitivity.length > 0 && (
-            <SensitivityTornado data={sensitivity} />
-          )}
-
-          {tariffs.pricingMode === 'dynamic' && tariffs.hourlyPrices && (
-            <EpexPriceOverlay
-              hourlyPrices={tariffs.hourlyPrices}
-              hourlyResults={results.simulation.hourlyResults}
-            />
-          )}
-
-          <AssumptionsSummary
-            battery={batteryConfig}
-            profile={energyProfile}
-            tariffs={tariffs}
-            subsidies={dashboardState.subsidies}
-            financials={financials}
-          />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* CTA */}
       <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-center text-white">

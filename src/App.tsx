@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-ro
 import { Battery, Zap, Save } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useCalculation, useProjects } from './hooks';
-import { AdvisorChat } from './components/ai-advisor';
 import { ProjectSelector, SaveProjectDialog } from './components/projects';
 import { InputPage } from './pages/InputPage';
 import { ResultsPage } from './pages/ResultsPage';
@@ -63,7 +62,6 @@ function AppContent() {
   const calc = useCalculation();
   const projectsHook = useProjects();
   const navigate = useNavigate();
-  const [chatOpen, setChatOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   async function handleSelectProject(id: string) {
@@ -171,6 +169,9 @@ function AppContent() {
                 dashboardState={calc.dashboardState}
                 isCalculating={calc.isCalculating}
                 error={calc.error}
+                narrative={calc.narrative}
+                isStreaming={calc.isStreaming}
+                narrativeError={calc.narrativeError}
               />
             }
           />
@@ -201,13 +202,6 @@ function AppContent() {
           />
         </Routes>
       </main>
-
-      {/* AI Advisor Chat */}
-      <AdvisorChat
-        dashboardState={calc.dashboardState}
-        isOpen={chatOpen}
-        onToggle={() => setChatOpen(!chatOpen)}
-      />
 
       {/* Save Project Dialog */}
       <SaveProjectDialog
