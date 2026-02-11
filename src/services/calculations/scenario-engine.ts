@@ -209,7 +209,7 @@ export function calculateFullResult(
 
   // Base scenario financial metrics (with adjusted horizon)
   const baseResult = runSingleAnalysis(battery, profile, tariffs, subsidies, adjustedFinancials);
-  const monthlyBreakdown = getMonthlyBreakdown(baseResult.simulation);
+  const monthlyBreakdown = getMonthlyBreakdown(baseResult.simulation, battery);
 
   // All three scenarios (with adjusted horizon)
   const scenarioResults = generateScenarios(battery, profile, tariffs, subsidies, adjustedFinancials);

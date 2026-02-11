@@ -169,7 +169,8 @@ export function simulateBatteryOperation(
 /**
  * Aggregates hourly simulation results into monthly breakdown.
  */
-export function getMonthlyBreakdown(simulation: AnnualSimulationResult): MonthlyBreakdown[] {
+export function getMonthlyBreakdown(simulation: AnnualSimulationResult, battery: BatteryConfig): MonthlyBreakdown[] {
+  const usableCapacity = new Decimal(battery.capacityKwh).mul(battery.depthOfDischarge);
   const months: MonthlyBreakdown[] = [];
   let hourOffset = 0;
 
@@ -200,7 +201,7 @@ export function getMonthlyBreakdown(simulation: AnnualSimulationResult): Monthly
       savings: savings.toNumber(),
       energyCharged: energyCharged.toNumber(),
       energyDischarged: energyDischarged.toNumber(),
-      cycles: cycleEnergy.toNumber(), // Approximate
+      cycles: usableCapacity.gt(0) ? cycleEnergy.div(usableCapacity).toNumber() : 0,
     });
 
     hourOffset += hoursInMonth;
